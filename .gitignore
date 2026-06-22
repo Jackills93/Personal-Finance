@@ -1,0 +1,15 @@
+# Segreti — non committare mai
+backend/.env
+psw_DB.txt
+*.pem
+*.key
+
+# Python
+backend/venv/
+backend/venv_*/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
