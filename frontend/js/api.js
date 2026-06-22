@@ -4,7 +4,7 @@
    esistente (DATA.categories / DATA.movements) già usa.
    Cambia API_BASE_URL per puntare al backend in produzione.
 ==================================================== */
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://personal-finance-gya1.onrender.com";
 
 async function apiRequest(path, options = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
