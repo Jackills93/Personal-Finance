@@ -19,11 +19,22 @@ create extension if not exists pgcrypto;
 create table if not exists categories (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
+  type          text not null default 'expense' check (type in ('income','expense')),
   color         text not null default '#7CA8E3',
   monthly_limit numeric(12,2),
   created_at    timestamptz not null default now()
 );
 alter table categories enable row level security;
+
+-- Migration idempotente per database creati prima dell'introduzione del campo "type"
+-- (sicura da rieseguire: non fa nulla se la colonna/constraint esistono già)
+alter table categories add column if not exists type text not null default 'expense';
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'categories_type_check') then
+    alter table categories add constraint categories_type_check check (type in ('income','expense'));
+  end if;
+end $$;
 
 -- ====================================================
 -- ACCOUNTS (conti) — schema pronto, nessuna API ancora in questa fase

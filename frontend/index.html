@@ -434,8 +434,15 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <h2>Nuova categoria</h2>
     <div class="form-row">
       <div class="field"><label>Nome</label><input type="text" id="catName" placeholder="Es. Trasporti"></div>
+      <div class="field" style="flex:0 0 110px;">
+        <label>Tipo</label>
+        <select id="catType">
+          <option value="expense">Uscita</option>
+          <option value="income">Entrata</option>
+        </select>
+      </div>
       <div class="field" style="flex:0 0 90px;"><label>Colore</label><input type="color" id="catColor" value="#7CA8E3" style="padding:3px;height:38px;"></div>
-      <div class="field" style="flex:0 0 160px;"><label id="catLimitLabel">Limite mensile</label><input type="number" id="catLimit" placeholder="0.00 (opzionale)" step="0.01" min="0"></div>
+      <div class="field" style="flex:0 0 160px;" id="catLimitField"><label id="catLimitLabel">Limite mensile</label><input type="number" id="catLimit" placeholder="0.00 (opzionale)" step="0.01" min="0"></div>
       <div class="field" style="flex:0 0 auto;"><label>&nbsp;</label><button class="primary" id="addCatBtn">Crea categoria</button></div>
     </div>
   </div>
@@ -1162,13 +1169,28 @@ function spentInCategory(id,monthOnly=true,persona=''){
     .reduce((s,m)=>s+m.amount,0);
 }
 
+function receivedInCategory(id,monthOnly=true,persona=''){
+  return DATA.movements
+    .filter(m=>m.type==='income'&&m.category===id
+      &&(!monthOnly||isCurrentMonth(m.date))
+      &&(!persona||m.persona===persona))
+    .reduce((s,m)=>s+m.amount,0);
+}
+
+function toggleCatLimitField(){
+  const isIncome=document.getElementById('catType').value==='income';
+  document.getElementById('catLimitField').style.display=isIncome?'none':'flex';
+}
+document.getElementById('catType').addEventListener('change',toggleCatLimitField);
+
 document.getElementById('addCatBtn').addEventListener('click',async ()=>{
   const name=document.getElementById('catName').value.trim();
+  const type=document.getElementById('catType').value;
   const color=document.getElementById('catColor').value;
-  const limit=parseFloat(document.getElementById('catLimit').value)||0;
+  const limit=type==='income'?0:(parseFloat(document.getElementById('catLimit').value)||0);
   if(!name){toast('Inserisci un nome categoria',true);return;}
   try {
-    const cat=await createCategoryAPI({name,color,limit});
+    const cat=await createCategoryAPI({name,type,color,limit});
     DATA.categories.push(cat);
     document.getElementById('catName').value='';
     document.getElementById('catLimit').value='';
@@ -1213,12 +1235,17 @@ window.__renamecat=startRenameCategory;
 window.__saverenamecat=saveRenameCategory;
 
 function refreshCategorySelect(){
+  const mTypeEl=document.getElementById('mType');
+  const recTypeEl=document.getElementById('recType');
   ['mCategory','movFilterCat','storicoCat','recCategory'].forEach(id=>{
     const sel=document.getElementById(id);if(!sel)return;
     const prev=sel.value;
     const blank=id==='mCategory'?'':(id==='recCategory'?'<option value="">— Nessuna —</option>':'<option value="">Tutte</option>');
     sel.innerHTML=blank;
-    DATA.categories.forEach(c=>{
+    const list=id==='mCategory'&&mTypeEl?DATA.categories.filter(c=>c.type===mTypeEl.value)
+      :id==='recCategory'&&recTypeEl?DATA.categories.filter(c=>c.type===recTypeEl.value)
+      :DATA.categories;
+    list.forEach(c=>{
       const o=document.createElement('option');o.value=c.id;o.textContent=c.name;sel.appendChild(o);
     });
     if(prev) sel.value=prev;
@@ -1232,6 +1259,34 @@ function renderCategories(){
   document.getElementById('catEmpty').style.display=DATA.categories.length?'none':'block';
 
   DATA.categories.forEach(c=>{
+    const isIncome=c.type==='income';
+    const typeBadge=`<span class="badge" style="${isIncome?'background:rgba(111,227,160,.1);color:var(--good);':''}">${isIncome?'Entrata':'Uscita'}</span>`;
+
+    if(isIncome){
+      const received=receivedInCategory(c.id);
+      const card=document.createElement('div');
+      card.className='cat-card';card.dataset.catCard=c.id;
+      card.innerHTML=`
+        <div class="swatch-lg" style="background:${c.color}33;border:2px solid ${c.color};border-radius:6px;width:28px;height:28px;flex-shrink:0;"></div>
+        <div class="info">
+          <div class="cat-name-display">${escH(c.name)}
+            <button class="icon-edit" onclick="window.__renamecat('${c.id}')" title="Rinomina">✏</button>
+            ${typeBadge}
+          </div>
+          <div class="cat-name-edit" style="display:none;">
+            <input type="text" value="${escH(c.name)}" data-rename-input="${c.id}">
+            <button class="ghost" style="padding:5px 10px;font-size:12px;" onclick="window.__saverenamecat('${c.id}')">✔</button>
+          </div>
+          <div class="lim">Ricevuto questo mese: ${fmtCur(received)}</div>
+        </div>
+        <div class="actions">
+          <input type="color" value="${c.color}" data-cat-color="${c.id}" style="width:32px;height:32px;padding:2px;border:none;background:none;cursor:pointer;" title="Cambia colore">
+          <button class="icon-btn" data-delcat="${c.id}" title="Elimina categoria">✕</button>
+        </div>`;
+      list.appendChild(card);
+      return;
+    }
+
     const spent=spentInCategory(c.id);
     const pct=c.limit>0?Math.round((spent/c.limit)*100):0;
     const limitDisplay=c.limit>0
@@ -1251,6 +1306,7 @@ function renderCategories(){
       <div class="info">
         <div class="cat-name-display">${escH(c.name)}
           <button class="icon-edit" onclick="window.__renamecat('${c.id}')" title="Rinomina">✏</button>
+          ${typeBadge}
           ${warningIcon}
         </div>
         <div class="cat-name-edit" style="display:none;">
@@ -1290,11 +1346,10 @@ function renderCategories(){
    MOVIMENTI
 ==================================================== */
 document.getElementById('mDate').value=todayISO();
-document.getElementById('mType').addEventListener('change',toggleMovFields);
+document.getElementById('mType').addEventListener('change',()=>{toggleMovFields();refreshCategorySelect();});
 
 function toggleMovFields(){
-  const isExp=document.getElementById('mType').value==='expense';
-  document.getElementById('mCatField').style.display=isExp?'flex':'none';
+  document.getElementById('mCatField').style.display='flex';
 }
 
 document.getElementById('addMovBtn').addEventListener('click',async ()=>{
@@ -1311,7 +1366,7 @@ document.getElementById('addMovBtn').addEventListener('click',async ()=>{
   let mov;
   try {
     mov=await createMovementAPI({type,desc,amount,
-      category:type==='expense'?catId:null,conto:contoId||null,persona:persona||null,date},DATA.conti);
+      category:catId||null,conto:contoId||null,persona:persona||null,date},DATA.conti);
   } catch(e){ toast('Errore: '+e.message,true); return; }
   DATA.movements.push(mov);
 
@@ -1483,6 +1538,7 @@ function renderGoals(){
    RICORRENTI
 ==================================================== */
 document.getElementById('recStartDate').value=todayISO();
+document.getElementById('recType').addEventListener('change',refreshCategorySelect);
 
 document.getElementById('addRecBtn').addEventListener('click',async ()=>{
   const name=document.getElementById('recName').value.trim();
@@ -1697,7 +1753,7 @@ function guessCategory(desc){
   for(const [keys,catId]of Object.entries(CAT_KEYWORDS)){
     if(keys.split('|').some(p=>d.includes(p))&&DATA.categories.find(c=>c.id===catId))return catId;
   }
-  return DATA.categories[0]?.id||'';
+  return DATA.categories.find(c=>c.type!=='income')?.id||'';
 }
 
 let importedRows=[];
@@ -1740,7 +1796,7 @@ function renderImportPreview(){
   const rw=document.createElement('div');
   importedRows.forEach((row,i)=>{
     const div=document.createElement('div');div.className='import-row';
-    const catOpts=DATA.categories.map(c=>`<option value="${c.id}" ${row.category===c.id?'selected':''}>${escH(c.name)}</option>`).join('');
+    const catOpts=DATA.categories.filter(c=>c.type!=='income').map(c=>`<option value="${c.id}" ${row.category===c.id?'selected':''}>${escH(c.name)}</option>`).join('');
     div.innerHTML=`
       <input type="checkbox" class="ir-check" ${row.selected?'checked':''} data-ir="${i}">
       <div class="ir-date">${row.date}</div>
@@ -1820,8 +1876,9 @@ function renderDashboard(filterPersona=''){
 
 function renderCatBars(filterPersona=''){
   const wrap=document.getElementById('catBars');wrap.innerHTML='';
-  if(!DATA.categories.length){wrap.innerHTML='<div class="empty">Crea una categoria per vedere l\'andamento.</div>';return;}
-  DATA.categories.forEach(c=>{
+  const expenseCats=DATA.categories.filter(c=>c.type!=='income');
+  if(!expenseCats.length){wrap.innerHTML='<div class="empty">Crea una categoria di uscita per vedere l\'andamento.</div>';return;}
+  expenseCats.forEach(c=>{
     const spent=spentInCategory(c.id,true,filterPersona);
     const limit=c.limit||0;
     const pct=limit>0?(spent/limit)*100:0;

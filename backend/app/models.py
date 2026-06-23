@@ -11,9 +11,11 @@ from app.database import Base
 
 class Category(Base):
     __tablename__ = "categories"
+    __table_args__ = (CheckConstraint("type in ('income','expense')", name="categories_type_check"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    type: Mapped[str] = mapped_column(Text, nullable=False, default="expense")
     color: Mapped[str] = mapped_column(Text, nullable=False, default="#7CA8E3")
     monthly_limit: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -22,10 +22,10 @@ async function apiRequest(path, options = {}) {
 
 /* ---------- CATEGORIE ---------- */
 function categoryFromAPI(c) {
-  return { id: c.id, name: c.name, color: c.color, limit: c.monthly_limit || 0 };
+  return { id: c.id, name: c.name, type: c.type, color: c.color, limit: c.monthly_limit || 0 };
 }
 function categoryToAPI(c) {
-  return { name: c.name, color: c.color, monthly_limit: c.limit || null };
+  return { name: c.name, type: c.type, color: c.color, monthly_limit: c.limit || null };
 }
 
 async function loadCategoriesFromAPI() {
