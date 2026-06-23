@@ -50,12 +50,77 @@ async function deleteCategoryAPI(id) {
   await apiRequest(`/categories/${id}`, { method: "DELETE" });
 }
 
+/* ---------- CONTI ---------- */
+function accountFromAPI(a) {
+  return { id: a.id, name: a.name, type: a.type, saldo: Number(a.initial_balance), color: a.color };
+}
+function accountToAPI(a) {
+  return { name: a.name, type: a.type, initial_balance: a.saldo, color: a.color };
+}
+
+async function loadAccountsFromAPI() {
+  const rows = await apiRequest("/accounts");
+  return rows.map(accountFromAPI);
+}
+async function createAccountAPI(localAccount) {
+  const row = await apiRequest("/accounts", {
+    method: "POST",
+    body: JSON.stringify(accountToAPI(localAccount)),
+  });
+  return accountFromAPI(row);
+}
+async function updateAccountAPI(id, partialLocalAccount) {
+  const row = await apiRequest(`/accounts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(accountToAPI(partialLocalAccount)),
+  });
+  return accountFromAPI(row);
+}
+async function deleteAccountAPI(id) {
+  await apiRequest(`/accounts/${id}`, { method: "DELETE" });
+}
+
+/* ---------- PERSONE ----------
+   Il resto del codice tratta DATA.persone come un semplice array di nomi
+   (non di oggetti {id,name}, eredità del prototipo originale). Manteniamo
+   quella forma e teniamo la mappa nome->id solo qui, per le chiamate API.
+*/
+let personIdByName = {};
+
+async function loadPersonsFromAPI() {
+  const rows = await apiRequest("/persons");
+  personIdByName = Object.fromEntries(rows.map((p) => [p.name, p.id]));
+  return rows.map((p) => p.name);
+}
+async function createPersonAPI(name) {
+  const row = await apiRequest("/persons", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  personIdByName[row.name] = row.id;
+  return row.name;
+}
+async function renamePersonAPI(oldName, newName) {
+  const id = personIdByName[oldName];
+  const row = await apiRequest(`/persons/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name: newName }),
+  });
+  delete personIdByName[oldName];
+  personIdByName[row.name] = row.id;
+  return row.name;
+}
+async function deletePersonAPI(name) {
+  const id = personIdByName[name];
+  await apiRequest(`/persons/${id}`, { method: "DELETE" });
+  delete personIdByName[name];
+}
+
 /* ---------- HELPER CONDIVISO CONTO <-> NOME ----------
    account_name/person_name/from_account_name/to_account_name sono testo nel
-   backend (conti/persone restano in localStorage per ora). Risolviamo il nome
-   conto <-> id locale usando l'elenco DATA.conti passato a queste funzioni —
-   la persona invece è già un nome semplice anche nel prototipo originale,
-   nessuna risoluzione necessaria.
+   backend. Risolviamo il nome conto <-> id locale usando l'elenco DATA.conti
+   passato a queste funzioni — la persona invece è già un nome semplice anche
+   nel prototipo originale, nessuna risoluzione necessaria.
 */
 function contoIdByName(name, contiList) {
   return name ? (contiList.find((c) => c.name === name)?.id ?? null) : null;

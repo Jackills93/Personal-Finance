@@ -904,28 +904,37 @@ function refreshPersoneSelects(){
   renderPersonaFilter();
 }
 
-document.getElementById('addPersonaBtn').addEventListener('click',()=>{
+document.getElementById('addPersonaBtn').addEventListener('click',async ()=>{
   const name=document.getElementById('personaName').value.trim();
   if(!name){toast('Inserisci un nome',true);return;}
   if(DATA.persone.includes(name)){toast('Persona già presente',true);return;}
-  DATA.persone.push(name);
-  document.getElementById('personaName').value='';
-  markDirty();refreshPersoneSelects();renderPersone();
+  try {
+    const created=await createPersonAPI(name);
+    DATA.persone.push(created);
+    document.getElementById('personaName').value='';
+    refreshPersoneSelects();renderPersone();
+  } catch(e){ toast('Errore: '+e.message,true); }
 });
 
-function renamePersona(oldName){
+async function renamePersona(oldName){
   const newName=prompt('Rinomina persona:',oldName);
   if(!newName||newName===oldName)return;
   if(DATA.persone.includes(newName)){toast('Nome già usato',true);return;}
-  DATA.persone=DATA.persone.map(p=>p===oldName?newName:p);
-  DATA.movements.forEach(m=>{if(m.persona===oldName)m.persona=newName;});
-  markDirty();refreshPersoneSelects();renderPersone();renderMovements();
-  toast(`"${oldName}" → "${newName}"`);
+  try {
+    await renamePersonAPI(oldName,newName);
+    DATA.persone=DATA.persone.map(p=>p===oldName?newName:p);
+    DATA.movements.forEach(m=>{if(m.persona===oldName)m.persona=newName;});
+    refreshPersoneSelects();renderPersone();renderMovements();
+    toast(`"${oldName}" → "${newName}"`);
+  } catch(e){ toast('Errore: '+e.message,true); }
 }
-function deletePersona(name){
+async function deletePersona(name){
   if(!confirm(`Eliminare "${name}"?`))return;
-  DATA.persone=DATA.persone.filter(p=>p!==name);
-  markDirty();refreshPersoneSelects();renderPersone();
+  try {
+    await deletePersonAPI(name);
+    DATA.persone=DATA.persone.filter(p=>p!==name);
+    refreshPersoneSelects();renderPersone();
+  } catch(e){ toast('Errore: '+e.message,true); }
 }
 window.__renamePersona=renamePersona;
 window.__deletePersona=deletePersona;
@@ -1010,23 +1019,29 @@ function refreshContiSelects(){
   });
 }
 
-document.getElementById('addContoBtn').addEventListener('click',()=>{
+document.getElementById('addContoBtn').addEventListener('click',async ()=>{
   const name=document.getElementById('contoName').value.trim();
   const type=document.getElementById('contoType').value;
   const saldo=parseFloat(document.getElementById('contoSaldo').value)||0;
   const color=document.getElementById('contoColor').value;
   if(!name){toast('Inserisci un nome conto',true);return;}
-  DATA.conti.push({id:uid('conto'),name,type,saldo,color});
-  document.getElementById('contoName').value='';
-  document.getElementById('contoSaldo').value='';
-  markDirty();refreshContiSelects();renderConti();renderDashboard();
-  toast('Conto aggiunto');
+  try {
+    const conto=await createAccountAPI({name,type,saldo,color});
+    DATA.conti.push(conto);
+    document.getElementById('contoName').value='';
+    document.getElementById('contoSaldo').value='';
+    refreshContiSelects();renderConti();renderDashboard();
+    toast('Conto aggiunto');
+  } catch(e){ toast('Errore: '+e.message,true); }
 });
 
-function deleteConto(id){
+async function deleteConto(id){
   if(!confirm('Eliminare questo conto?'))return;
-  DATA.conti=DATA.conti.filter(c=>c.id!==id);
-  markDirty();refreshContiSelects();renderConti();renderDashboard();
+  try {
+    await deleteAccountAPI(id);
+    DATA.conti=DATA.conti.filter(c=>c.id!==id);
+    refreshContiSelects();renderConti();renderDashboard();
+  } catch(e){ toast('Errore: '+e.message,true); }
 }
 
 function renderConti(){
@@ -1062,9 +1077,14 @@ function renderConti(){
     list.appendChild(card);
   });
   list.querySelectorAll('[data-cs]').forEach(inp=>{
-    inp.addEventListener('change',()=>{
+    inp.addEventListener('change',async ()=>{
       const con=DATA.conti.find(c=>c.id===inp.dataset.cs);
-      if(con){con.saldo=parseFloat(inp.value)||0;markDirty();renderConti();renderDashboard();}
+      if(!con)return;
+      const newSaldo=parseFloat(inp.value)||0;
+      try {
+        await updateAccountAPI(con.id,{name:con.name,type:con.type,color:con.color,saldo:newSaldo});
+        con.saldo=newSaldo;renderConti();renderDashboard();
+      } catch(e){ toast('Errore: '+e.message,true); }
     });
   });
   list.querySelectorAll('[data-delconto]').forEach(btn=>{
@@ -1968,6 +1988,12 @@ async function initFromServer(){
   try {
     DATA.categories=await loadCategoriesFromAPI();
   } catch(e){ toast('Errore caricamento categorie: '+e.message,true); }
+  try {
+    DATA.conti=await loadAccountsFromAPI();
+  } catch(e){ toast('Errore caricamento conti: '+e.message,true); }
+  try {
+    DATA.persone=await loadPersonsFromAPI();
+  } catch(e){ toast('Errore caricamento persone: '+e.message,true); }
   try {
     await runDueRecurringAPI(DATA.conti);
   } catch(e){ toast('Errore controllo ricorrenze: '+e.message,true); }
