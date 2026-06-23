@@ -5,10 +5,12 @@
    Cambia API_BASE_URL per puntare al backend in produzione.
 ==================================================== */
 const API_BASE_URL = "https://personal-finance-gya1.onrender.com";
+const AUTH_STORAGE_KEY = "bilancio_app_password";
 
 async function apiRequest(path, options = {}) {
+  const password = localStorage.getItem(AUTH_STORAGE_KEY) || "";
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-App-Password": password },
     ...options,
   });
   if (!res.ok) {
@@ -18,6 +20,13 @@ async function apiRequest(path, options = {}) {
   }
   if (res.status === 204) return null;
   return res.json();
+}
+
+async function checkPassword(password) {
+  const res = await fetch(`${API_BASE_URL}/categories`, {
+    headers: { "X-App-Password": password },
+  });
+  return res.ok;
 }
 
 /* ---------- CATEGORIE ---------- */

@@ -76,6 +76,12 @@ Se la categoria indicata non corrisponde a nessuna categoria esistente, il bot r
 
 Senza queste due variabili configurate, il resto dell'app funziona comunque normalmente: webhook e notifiche restano no-op silenziosi.
 
+## 7. Protezione con password
+
+L'app non ha login/account: chiunque conosca l'URL del frontend vede e modifica gli stessi dati. Per bloccare l'accesso casuale, imposta su Render → Environment una variabile `APP_PASSWORD` con una password a tua scelta. Il backend la richiederà (header `X-App-Password`) su tutti gli endpoint dati; il frontend mostra una schermata di accesso al primo caricamento e poi la ricorda nel browser. `/health` e il webhook Telegram non la richiedono (restano protetti diversamente: il webhook dal controllo `TELEGRAM_CHAT_ID`).
+
+Senza `APP_PASSWORD` impostata, l'app funziona come oggi, senza nessuna protezione.
+
 ## Prossimi step (non ancora fatti)
 
 - API CRUD per `accounts`, `persons`, `goals`, `investments` + migrazione delle colonne FK reali su `movements`/`recurring_expenses` (oggi `account_name`/`person_name`/ecc. sono testo denormalizzato, vedi commenti in `supabase/schema.sql`).

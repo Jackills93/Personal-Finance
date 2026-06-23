@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.auth import verify_password
 from app.database import get_db
 from app.models import Person
 from app.schemas.person import PersonCreate, PersonRead, PersonUpdate
 
-router = APIRouter(prefix="/persons", tags=["persons"])
+router = APIRouter(prefix="/persons", tags=["persons"], dependencies=[Depends(verify_password)])
 
 
 @router.get("", response_model=list[PersonRead])

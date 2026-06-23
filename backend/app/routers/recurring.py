@@ -5,13 +5,14 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import verify_password
 from app.database import get_db
 from app.models import RecurringExpense
 from app.schemas.movement import MovementCreate, MovementRead
 from app.schemas.recurring import RecurringCreate, RecurringRead, RecurringUpdate
 from app.services import create_movement_and_notify
 
-router = APIRouter(prefix="/recurring", tags=["recurring"])
+router = APIRouter(prefix="/recurring", tags=["recurring"], dependencies=[Depends(verify_password)])
 
 
 @router.get("", response_model=list[RecurringRead])

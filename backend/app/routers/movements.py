@@ -4,12 +4,13 @@ from datetime import date as date_type
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import verify_password
 from app.database import get_db
 from app.models import Movement
 from app.schemas.movement import MovementCreate, MovementRead, MovementType, MovementUpdate
 from app.services import create_movement_and_notify
 
-router = APIRouter(prefix="/movements", tags=["movements"])
+router = APIRouter(prefix="/movements", tags=["movements"], dependencies=[Depends(verify_password)])
 
 
 @router.get("", response_model=list[MovementRead])

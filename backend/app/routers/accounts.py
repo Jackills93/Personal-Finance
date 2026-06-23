@@ -3,11 +3,12 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import verify_password
 from app.database import get_db
 from app.models import Account
 from app.schemas.account import AccountCreate, AccountRead, AccountUpdate
 
-router = APIRouter(prefix="/accounts", tags=["accounts"])
+router = APIRouter(prefix="/accounts", tags=["accounts"], dependencies=[Depends(verify_password)])
 
 
 @router.get("", response_model=list[AccountRead])

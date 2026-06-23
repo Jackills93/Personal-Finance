@@ -226,6 +226,21 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <body>
 <div id="toast" class="toast"></div>
 
+<!-- GATE ACCESSO -->
+<div class="modal-overlay" id="authGate">
+  <div class="modal-box">
+    <h3>Accesso protetto</h3>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="authPasswordInput" placeholder="Inserisci la password" autofocus>
+    </div>
+    <div id="authError" style="color:var(--bad);font-size:12px;margin-top:6px;display:none;">Password errata.</div>
+    <div class="modal-actions">
+      <button class="primary" id="authSubmitBtn">Entra</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL MODIFICA LIMITE CATEGORIA -->
 <div class="modal-overlay hidden" id="limitModal">
   <div class="modal-box">
@@ -1984,7 +1999,37 @@ document.getElementById('currencySelect').value=currentCurrency;
 document.getElementById('mDate').value=todayISO();
 document.getElementById('giroDate').value=todayISO();
 
+async function ensureAuthenticated(){
+  const stored=localStorage.getItem(AUTH_STORAGE_KEY);
+  if(stored && await checkPassword(stored)) return;
+  if(stored) localStorage.removeItem(AUTH_STORAGE_KEY);
+
+  const gate=document.getElementById('authGate');
+  const input=document.getElementById('authPasswordInput');
+  const error=document.getElementById('authError');
+  const submitBtn=document.getElementById('authSubmitBtn');
+  gate.classList.remove('hidden');
+
+  while(true){
+    const pw=await new Promise(resolve=>{
+      const onSubmit=()=>{ submitBtn.removeEventListener('click',onSubmit); input.removeEventListener('keydown',onKey); resolve(input.value); };
+      const onKey=e=>{ if(e.key==='Enter') onSubmit(); };
+      submitBtn.addEventListener('click',onSubmit);
+      input.addEventListener('keydown',onKey);
+      input.focus();
+    });
+    if(await checkPassword(pw)){
+      localStorage.setItem(AUTH_STORAGE_KEY,pw);
+      gate.classList.add('hidden');
+      return;
+    }
+    error.style.display='block';
+    input.value='';
+  }
+}
+
 async function initFromServer(){
+  await ensureAuthenticated();
   try {
     DATA.categories=await loadCategoriesFromAPI();
   } catch(e){ toast('Errore caricamento categorie: '+e.message,true); }
