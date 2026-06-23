@@ -67,6 +67,13 @@ Il bot serve a due cose: (a) registrare una spesa scrivendo un messaggio in chat
    ```
 5. Test: scrivi al bot `"12.50 Caffè"` — dovrebbe risponderti con una conferma e il movimento deve apparire nell'app. Se una categoria supera il limite mensile (sia da un movimento creato nell'app, sia da Telegram, sia da una ricorrenza generata in automatico), il bot manda un messaggio di avviso.
 
+**Sintassi messaggio:** `<importo> <descrizione> #categoria #persona #conto` — gli hashtag vanno **dopo** la descrizione, in quest'ordine, e sono tutti facoltativi:
+- `"25.50 Spesa supermercato"` → solo importo+descrizione, categoria indovinata per parole chiave.
+- `"25.50 Spesa supermercato #Alimentari"` → categoria esplicita.
+- `"25.50 Spesa supermercato #Alimentari #Pietro #Conto Principale"` → categoria, persona e conto espliciti.
+
+Se la categoria indicata non corrisponde a nessuna categoria esistente, il bot ricade sul riconoscimento automatico per parole chiave.
+
 Senza queste due variabili configurate, il resto dell'app funziona comunque normalmente: webhook e notifiche restano no-op silenziosi.
 
 ## Prossimi step (non ancora fatti)
