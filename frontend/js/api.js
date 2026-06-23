@@ -185,6 +185,13 @@ async function createMovementAPI(localMov, contiList) {
   });
   return movementFromAPI(row, contiList);
 }
+async function updateMovementAPI(id, localMov, contiList) {
+  const row = await apiRequest(`/movements/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(movementToAPI(localMov, contiList)),
+  });
+  return movementFromAPI(row, contiList);
+}
 async function deleteMovementAPI(id) {
   await apiRequest(`/movements/${id}`, { method: "DELETE" });
 }
