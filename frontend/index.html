@@ -227,7 +227,26 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   .grid-kpi{grid-template-columns:repeat(2,1fr);}
   .conti-summary{grid-template-columns:1fr;}
 }
+
+/* ---- BILANCIO SECTION ---- */
+.bil-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
+.bil-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.bil-table{width:100%;border-collapse:collapse;font-size:13px;}
+.bil-table th{text-align:left;padding:8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);border-bottom:2px solid var(--line);}
+.bil-table td{padding:8px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
+.bil-table tr:last-child td{border-bottom:none;}
+.bil-table td.num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+.bil-table td.good{color:var(--good);}
+.bil-table td.bad{color:var(--bad);}
+.bil-table tr.highlight td{background:rgba(79,152,163,.08);}
+.bil-export-row{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+.bil-export-row h2{flex:1;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin:0;}
+/* Dashboard pie chart */
+.dash-pie-wrap{position:relative;width:220px;height:220px;margin:0 auto;}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
 </head>
 <body>
 <div id="toast" class="toast"></div>
@@ -265,7 +284,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <div class="shell">
 <header class="top">
   <div class="brand">
-    <span class="mark">Bilancio · v3</span>
+    <span class="mark">Bilancio</span>
     <h1>Finanze Personali</h1>
   </div>
   <div class="header-actions">
@@ -317,8 +336,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <button data-view="storico">Storico</button>
   <button data-view="obiettivi">Obiettivi</button>
   <button data-view="persone">Persone</button>
-  <button data-view="importa">Importa Estratto</button>
   <button data-view="investimenti">Investimenti</button>
+  <button data-view="importa">Importa Estratto</button>
+  <button data-view="bilancio">Bilancio</button>
 </nav>
 
 <!-- ==================== DASHBOARD ==================== -->
@@ -363,6 +383,13 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="panel">
       <h2>Spesa per categoria <small>Limite mensile vs spesa attuale</small></h2>
       <div id="catBars"></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <h2>Distribuzione spese per categoria <small>Mese corrente</small></h2>
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+      <div class="dash-pie-wrap"><canvas id="dashPieChart"></canvas></div>
+      <div id="dashPieLegend" style="flex:1;min-width:200px;"></div>
     </div>
   </div>
 </section>
@@ -725,6 +752,66 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
       </table>
     </div>
     <div class="empty" id="invEmpty" style="display:none;">Nessuna posizione. Cerca un titolo e aggiungilo.</div>
+  </div>
+</section>
+
+<!-- ==================== BILANCIO ==================== -->
+<section class="view" id="view-bilancio">
+  <div class="bil-export-row">
+    <h2>Bilancio Personale</h2>
+    <button class="secondary" id="bilExportPdf" style="display:flex;align-items:center;gap:6px;">⬇ Esporta PDF</button>
+  </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="bil-filters">
+      <div class="field" style="flex:0 0 150px;"><label>Da (mese)</label><input type="month" id="bilFrom"></div>
+      <div class="field" style="flex:0 0 150px;"><label>A (mese)</label><input type="month" id="bilTo"></div>
+      <div class="field" style="flex:0 0 160px;"><label>Persona</label>
+        <select id="bilPersona">
+          <option value="">Tutti</option>
+        </select>
+      </div>
+      <div class="field" style="flex:0 0 auto;"><label>&nbsp;</label><button class="primary" id="bilRefresh">Aggiorna</button></div>
+    </div>
+  </div>
+  <div class="grid-kpi" id="bilKpis">
+    <div class="kpi accent"><div class="label">Entrate totali</div><div class="value good mono" id="bilKpiIn">—</div><div class="sub" id="bilKpiInSub">—</div></div>
+    <div class="kpi"><div class="label">Uscite totali</div><div class="value bad mono" id="bilKpiOut">—</div><div class="sub" id="bilKpiOutSub">—</div></div>
+    <div class="kpi"><div class="label">Saldo periodo</div><div class="value mono" id="bilKpiSaldo">—</div><div class="sub">Entrate − Uscite</div></div>
+    <div class="kpi"><div class="label">Tasso risparmio</div><div class="value mono" id="bilKpiSavings">—</div><div class="sub">Su entrate totali</div></div>
+    <div class="kpi"><div class="label">Mesi analizzati</div><div class="value mono" id="bilKpiMonths">—</div><div class="sub" id="bilKpiMonthsSub">—</div></div>
+  </div>
+  <div class="bil-grid-2">
+    <div class="panel">
+      <h2>Andamento mensile</h2>
+      <table class="bil-table" id="bilMonthTable">
+        <thead><tr><th>Mese</th><th style="text-align:right">Entrate</th><th style="text-align:right">Uscite</th><th style="text-align:right">Saldo</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h2>Spese per categoria</h2>
+      <table class="bil-table" id="bilCatTable">
+        <thead><tr><th>Categoria</th><th style="text-align:right">Totale</th><th style="text-align:right">% uscite</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Breakdown per persona</h2>
+    <table class="bil-table" id="bilPersonTable">
+      <thead><tr><th>Persona</th><th style="text-align:right">Entrate</th><th style="text-align:right">Uscite</th><th style="text-align:right">Saldo</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="bil-grid-2" style="margin-top:16px;">
+    <div class="panel">
+      <h2>Mese con spese più alte</h2>
+      <div id="bilWorstMonth" class="empty">—</div>
+    </div>
+    <div class="panel">
+      <h2>Mese con spese più basse</h2>
+      <div id="bilBestMonth" class="empty">—</div>
+    </div>
   </div>
 </section>
 
@@ -1996,6 +2083,7 @@ function renderDashboard(filterPersona=''){
   document.getElementById('kpiContiSub').textContent=`${DATA.conti.length} conto${DATA.conti.length!==1?'i':''}`;
   renderCatBars(filterPersona);
   renderBalanceChart(filterPersona);
+  renderDashPieChart(filterPersona);
 }
 
 function renderCatBars(filterPersona=''){
@@ -2058,6 +2146,62 @@ function renderBalanceChart(filterPersona=''){
   const l1=mkT();l1.setAttribute('x',pL);l1.setAttribute('y',H-4);l1.textContent=`1 ${now.toLocaleDateString('it-IT',{month:'short'})}`;svg.appendChild(l1);
   const l2=mkT();l2.setAttribute('x',W-pR);l2.setAttribute('y',H-4);l2.setAttribute('text-anchor','end');l2.textContent=`Oggi (${today})`;svg.appendChild(l2);
   const lv=mkT();lv.setAttribute('x',xFor(li)-6);lv.setAttribute('y',yFor(points[li].value)-8);lv.setAttribute('text-anchor','end');lv.setAttribute('fill','var(--accent)');lv.style.fontWeight='600';lv.textContent=fmtCur(points[li].value);svg.appendChild(lv);
+}
+
+/* ====================================================
+   DASHBOARD PIE CHART
+==================================================== */
+let dashPieChartInst = null;
+
+function renderDashPieChart(filterPersona=''){
+  const canvas = document.getElementById('dashPieChart');
+  const legend = document.getElementById('dashPieLegend');
+  if(!canvas || typeof Chart === 'undefined') return;
+
+  const monthMovs = DATA.movements.filter(m =>
+    isCurrentMonth(m.date) &&
+    (!filterPersona || m.persona === filterPersona) &&
+    m.type === 'expense' && m.category
+  );
+  const expenseCats = DATA.categories.filter(c => c.type !== 'income');
+  const data = expenseCats.map(c => ({
+    cat: c,
+    total: monthMovs.filter(m => m.category === c.id).reduce((s,m) => s + m.amount, 0)
+  })).filter(d => d.total > 0);
+
+  if(dashPieChartInst){ dashPieChartInst.destroy(); dashPieChartInst = null; }
+
+  if(!data.length){
+    canvas.style.display='none';
+    legend.innerHTML='<div class="empty" style="padding:12px 0;">Nessuna spesa per categoria nel mese.</div>';
+    return;
+  }
+  canvas.style.display='';
+  const totalExp = data.reduce((s,d) => s + d.total, 0);
+
+  dashPieChartInst = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.cat.name),
+      datasets:[{ data: data.map(d => d.total), backgroundColor: data.map(d => d.cat.color), borderWidth: 2, borderColor: 'var(--panel)' }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:true,
+      plugins:{ legend:{display:false}, tooltip:{
+        callbacks:{ label: ctx => ` ${fmtCur(ctx.parsed)} (${((ctx.parsed/totalExp)*100).toFixed(1)}%)` }
+      }}
+    }
+  });
+
+  legend.innerHTML = data.map(d => {
+    const pct = ((d.total/totalExp)*100).toFixed(1);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);">
+      <span style="width:10px;height:10px;border-radius:2px;background:${d.cat.color};flex-shrink:0;"></span>
+      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(d.cat.name)}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink-dim);">${fmtCur(d.total)}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);min-width:42px;text-align:right;">${pct}%</span>
+    </div>`;
+  }).join('');
 }
 
 /* ====================================================
@@ -2653,6 +2797,327 @@ document.querySelector('[data-view="investimenti"]').addEventListener('click',()
   } else {
     renderInvestimenti();
   }
+});
+
+/* ====================================================
+   BILANCIO
+==================================================== */
+(function initBilancioDefaults(){
+  const now = new Date();
+  const y = now.getFullYear();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('bilFrom').value = `${y}-01`;
+  document.getElementById('bilTo').value   = `${y}-${pad(now.getMonth()+1)}`;
+})();
+
+function getBilancioMovs(){
+  const from = document.getElementById('bilFrom').value;
+  const to   = document.getElementById('bilTo').value;
+  const persona = document.getElementById('bilPersona').value;
+  return DATA.movements.filter(m =>
+    m.type !== 'transfer' &&
+    (!from || m.date.slice(0,7) >= from) &&
+    (!to   || m.date.slice(0,7) <= to) &&
+    (!persona || m.persona === persona)
+  );
+}
+
+function bilMonthKey(dateStr){ return dateStr.slice(0,7); }
+
+function renderBilancio(){
+  const movs = getBilancioMovs();
+  const income = movs.filter(m=>m.type==='income');
+  const expense = movs.filter(m=>m.type==='expense');
+  const totIn  = income.reduce((s,m)=>s+m.amount,0);
+  const totOut = expense.reduce((s,m)=>s+m.amount,0);
+  const saldo  = totIn - totOut;
+  const savingsRate = totIn > 0 ? ((saldo/totIn)*100) : 0;
+
+  // KPIs
+  document.getElementById('bilKpiIn').textContent  = fmtCur(totIn);
+  document.getElementById('bilKpiInSub').textContent = `${income.length} entrate`;
+  document.getElementById('bilKpiOut').textContent = fmtCur(totOut);
+  document.getElementById('bilKpiOutSub').textContent = `${expense.length} uscite`;
+  const sEl = document.getElementById('bilKpiSaldo');
+  sEl.textContent = fmtCur(saldo);
+  sEl.className = 'value mono ' + (saldo>=0?'good':'bad');
+  const svEl = document.getElementById('bilKpiSavings');
+  svEl.textContent = (savingsRate>=0?'+':'')+savingsRate.toFixed(1)+'%';
+  svEl.className = 'value mono ' + (savingsRate>=0?'good':'bad');
+
+  // Mesi unici nel range
+  const months = [...new Set(movs.map(m=>bilMonthKey(m.date)))].sort();
+  document.getElementById('bilKpiMonths').textContent = months.length;
+  document.getElementById('bilKpiMonthsSub').textContent = months.length
+    ? `${months[0]} → ${months[months.length-1]}`
+    : '—';
+
+  // Tabella mensile
+  const monthData = months.map(mk => {
+    const mm = movs.filter(m=>bilMonthKey(m.date)===mk);
+    const mIn  = mm.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+    const mOut = mm.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+    return { mk, mIn, mOut, mSaldo: mIn-mOut };
+  });
+  const tbody = document.querySelector('#bilMonthTable tbody');
+  tbody.innerHTML = monthData.map(r => {
+    const d = new Date(r.mk+'-01');
+    const label = d.toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+    const cls = r.mSaldo>=0?'good':'bad';
+    return `<tr>
+      <td>${label}</td>
+      <td class="num good">${fmtCur(r.mIn)}</td>
+      <td class="num bad">${fmtCur(r.mOut)}</td>
+      <td class="num ${cls}">${r.mSaldo>=0?'+':''}${fmtCur(r.mSaldo)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" style="color:var(--ink-faint);padding:12px 10px;">Nessun dato.</td></tr>';
+
+  // Tabella categorie uscite
+  const expenseCats = DATA.categories.filter(c=>c.type!=='income');
+  const catRows = expenseCats.map(c => ({
+    cat: c,
+    total: expense.filter(m=>m.category===c.id).reduce((s,m)=>s+m.amount,0)
+  })).filter(r=>r.total>0).sort((a,b)=>b.total-a.total);
+  const catTbody = document.querySelector('#bilCatTable tbody');
+  catTbody.innerHTML = catRows.map(r => {
+    const pct = totOut>0 ? ((r.total/totOut)*100).toFixed(1) : '0.0';
+    return `<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${r.cat.color};margin-right:7px;vertical-align:middle;"></span>${escH(r.cat.name)}</td>
+      <td class="num">${fmtCur(r.total)}</td>
+      <td class="num" style="color:var(--ink-dim);">${pct}%</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="3" style="color:var(--ink-faint);padding:12px 10px;">Nessuna uscita categorizzata.</td></tr>';
+
+  // Tabella per persona
+  const people = [...new Set(movs.map(m=>m.persona).filter(Boolean))].sort();
+  const personTbody = document.querySelector('#bilPersonTable tbody');
+  personTbody.innerHTML = people.map(p => {
+    const pm = movs.filter(m=>m.persona===p);
+    const pIn  = pm.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+    const pOut = pm.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+    const pS   = pIn-pOut;
+    return `<tr>
+      <td><strong>${escH(p)}</strong></td>
+      <td class="num good">${fmtCur(pIn)}</td>
+      <td class="num bad">${fmtCur(pOut)}</td>
+      <td class="num ${pS>=0?'good':'bad'}">${pS>=0?'+':''}${fmtCur(pS)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" style="color:var(--ink-faint);padding:12px 10px;">Nessuna persona associata ai movimenti.</td></tr>';
+
+  // Mese migliore / peggiore (per uscite)
+  const expMonths = monthData.filter(r=>r.mOut>0);
+  const worst = expMonths.length ? expMonths.reduce((a,b)=>b.mOut>a.mOut?b:a) : null;
+  const best  = expMonths.length ? expMonths.reduce((a,b)=>b.mOut<a.mOut?b:a) : null;
+  const fmtMonth = mk => new Date(mk+'-01').toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+  document.getElementById('bilWorstMonth').innerHTML = worst
+    ? `<div style="font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--bad);">${fmtCur(worst.mOut)}</div><div style="color:var(--ink-dim);font-size:13px;margin-top:4px;">${fmtMonth(worst.mk)}</div>`
+    : '—';
+  document.getElementById('bilBestMonth').innerHTML = best
+    ? `<div style="font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--good);">${fmtCur(best.mOut)}</div><div style="color:var(--ink-dim);font-size:13px;margin-top:4px;">${fmtMonth(best.mk)}</div>`
+    : '—';
+}
+
+function exportBilancio(){
+  if(typeof window.jspdf === 'undefined'){
+    toast('jsPDF non ancora caricato — riprova tra un secondo',true);
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const persona = document.getElementById('bilPersona').value || 'Tutti';
+  const from = document.getElementById('bilFrom').value;
+  const to   = document.getElementById('bilTo').value;
+  const movs = getBilancioMovs();
+  const income  = movs.filter(m=>m.type==='income');
+  const expense = movs.filter(m=>m.type==='expense');
+  const totIn   = income.reduce((s,m)=>s+m.amount,0);
+  const totOut  = expense.reduce((s,m)=>s+m.amount,0);
+  const saldo   = totIn-totOut;
+  const savRate = totIn>0 ? ((saldo/totIn)*100).toFixed(1)+'%' : '—';
+  const fmtN = n => n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+
+  // ── COVER ──────────────────────────────────────────
+  doc.setFillColor(23,22,20);
+  doc.rect(0,0,W,297,'F');
+  doc.setTextColor(79,152,163);
+  doc.setFontSize(10);
+  doc.setFont('helvetica','bold');
+  doc.text('BILANCIO PERSONALE', W/2, 90, {align:'center'});
+  doc.setTextColor(241,237,230);
+  doc.setFontSize(26);
+  doc.text('Report Finanziario', W/2, 106, {align:'center'});
+  doc.setFontSize(13);
+  doc.setTextColor(169,160,150);
+  doc.text(`${from} — ${to}`, W/2, 118, {align:'center'});
+  if(persona !== 'Tutti') doc.text(`Persona: ${persona}`, W/2, 128, {align:'center'});
+  doc.setTextColor(110,102,93);
+  doc.setFontSize(9);
+  doc.text(`Generato il ${new Date().toLocaleDateString('it-IT')}`, W/2, 280, {align:'center'});
+
+  // ── PAG 2: RIEPILOGO ───────────────────────────────
+  doc.addPage();
+  doc.setTextColor(30,28,25);
+  doc.setFillColor(30,28,25);
+  doc.rect(0,0,W,297,'F');
+
+  doc.setTextColor(79,152,163);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','bold');
+  doc.text('RIEPILOGO GENERALE', 20, 24);
+  doc.setTextColor(169,160,150);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  doc.text(`Periodo: ${from} → ${to}  ·  Persona: ${persona}`, 20, 31);
+
+  doc.autoTable({
+    startY: 38,
+    head:[['Voce','Importo']],
+    body:[
+      ['Entrate totali', fmtN(totIn)],
+      ['Uscite totali',  fmtN(totOut)],
+      ['Saldo periodo',  fmtN(saldo)],
+      ['Tasso di risparmio', savRate],
+      ['N° movimenti entrata', income.length.toString()],
+      ['N° movimenti uscita',  expense.length.toString()],
+    ],
+    theme:'grid',
+    styles:{ fillColor:[38,35,32], textColor:[241,237,230], fontSize:10, cellPadding:5 },
+    headStyles:{ fillColor:[79,152,163], textColor:[23,22,20], fontStyle:'bold' },
+    columnStyles:{ 1:{ halign:'right', fontStyle:'bold' } },
+  });
+
+  // ── PAG 3: ANDAMENTO MENSILE ───────────────────────
+  doc.addPage();
+  doc.setFillColor(30,28,25);
+  doc.rect(0,0,W,297,'F');
+  doc.setTextColor(79,152,163);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','bold');
+  doc.text('ANDAMENTO MENSILE', 20, 24);
+
+  const months = [...new Set(movs.map(m=>m.date.slice(0,7)))].sort();
+  const monthRows = months.map(mk => {
+    const mm  = movs.filter(m=>m.date.slice(0,7)===mk);
+    const mIn = mm.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+    const mOut= mm.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+    const d   = new Date(mk+'-01');
+    return [
+      d.toLocaleDateString('it-IT',{month:'long',year:'numeric'}),
+      fmtN(mIn), fmtN(mOut), fmtN(mIn-mOut)
+    ];
+  });
+  doc.autoTable({
+    startY: 30,
+    head:[['Mese','Entrate','Uscite','Saldo']],
+    body: monthRows.length ? monthRows : [['—','—','—','—']],
+    theme:'grid',
+    styles:{ fillColor:[38,35,32], textColor:[241,237,230], fontSize:10, cellPadding:5 },
+    headStyles:{ fillColor:[79,152,163], textColor:[23,22,20], fontStyle:'bold' },
+    columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right',fontStyle:'bold'} },
+  });
+
+  // ── PAG 4: USCITE PER CATEGORIA ───────────────────
+  doc.addPage();
+  doc.setFillColor(30,28,25);
+  doc.rect(0,0,W,297,'F');
+  doc.setTextColor(79,152,163);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','bold');
+  doc.text('USCITE PER CATEGORIA', 20, 24);
+
+  const expenseCats = DATA.categories.filter(c=>c.type!=='income');
+  const catRows = expenseCats.map(c => ({
+    name: c.name,
+    total: expense.filter(m=>m.category===c.id).reduce((s,m)=>s+m.amount,0)
+  })).filter(r=>r.total>0).sort((a,b)=>b.total-a.total);
+  doc.autoTable({
+    startY: 30,
+    head:[['Categoria','Totale','% su uscite']],
+    body: catRows.map(r => [
+      r.name, fmtN(r.total),
+      totOut>0 ? ((r.total/totOut)*100).toFixed(1)+'%' : '—'
+    ]),
+    theme:'grid',
+    styles:{ fillColor:[38,35,32], textColor:[241,237,230], fontSize:10, cellPadding:5 },
+    headStyles:{ fillColor:[79,152,163], textColor:[23,22,20], fontStyle:'bold' },
+    columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'} },
+  });
+
+  // ── PAG 5: BREAKDOWN PER PERSONA ──────────────────
+  doc.addPage();
+  doc.setFillColor(30,28,25);
+  doc.rect(0,0,W,297,'F');
+  doc.setTextColor(79,152,163);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','bold');
+  doc.text('BREAKDOWN PER PERSONA', 20, 24);
+
+  const people = [...new Set(movs.map(m=>m.persona).filter(Boolean))].sort();
+  const personRows = people.map(p => {
+    const pm  = movs.filter(m=>m.persona===p);
+    const pIn = pm.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+    const pOut= pm.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+    return [p, fmtN(pIn), fmtN(pOut), fmtN(pIn-pOut)];
+  });
+  doc.autoTable({
+    startY: 30,
+    head:[['Persona','Entrate','Uscite','Saldo']],
+    body: personRows.length ? personRows : [['—','—','—','—']],
+    theme:'grid',
+    styles:{ fillColor:[38,35,32], textColor:[241,237,230], fontSize:10, cellPadding:5 },
+    headStyles:{ fillColor:[79,152,163], textColor:[23,22,20], fontStyle:'bold' },
+    columnStyles:{ 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right',fontStyle:'bold'} },
+  });
+
+  // ── PAG 6: ANALISI ────────────────────────────────
+  const expMonths = months.map(mk => ({
+    mk,
+    mOut: movs.filter(m=>m.date.slice(0,7)===mk&&m.type==='expense').reduce((s,m)=>s+m.amount,0)
+  })).filter(r=>r.mOut>0);
+  if(expMonths.length){
+    doc.addPage();
+    doc.setFillColor(30,28,25);
+    doc.rect(0,0,W,297,'F');
+    doc.setTextColor(79,152,163);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    doc.text('ANALISI', 20, 24);
+    const worst = expMonths.reduce((a,b)=>b.mOut>a.mOut?b:a);
+    const best  = expMonths.reduce((a,b)=>b.mOut<a.mOut?b:a);
+    const fmtMk = mk => new Date(mk+'-01').toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+    doc.autoTable({
+      startY: 30,
+      head:[['Indicatore','Mese','Uscite']],
+      body:[
+        ['Mese con spese più alte', fmtMk(worst.mk), fmtN(worst.mOut)],
+        ['Mese con spese più basse', fmtMk(best.mk), fmtN(best.mOut)],
+      ],
+      theme:'grid',
+      styles:{ fillColor:[38,35,32], textColor:[241,237,230], fontSize:10, cellPadding:5 },
+      headStyles:{ fillColor:[79,152,163], textColor:[23,22,20], fontStyle:'bold' },
+      columnStyles:{ 2:{halign:'right'} },
+    });
+  }
+
+  doc.save(`bilancio_${from}_${to}.pdf`);
+}
+
+document.getElementById('bilRefresh').addEventListener('click', renderBilancio);
+document.getElementById('bilExportPdf').addEventListener('click', exportBilancio);
+
+document.querySelector('[data-view="bilancio"]').addEventListener('click', () => {
+  // Aggiorna select persona
+  const sel = document.getElementById('bilPersona');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Tutti</option>';
+  DATA.persone.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    if(p === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+  renderBilancio();
 });
 
 })();
