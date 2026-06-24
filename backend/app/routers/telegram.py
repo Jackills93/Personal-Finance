@@ -49,6 +49,16 @@ def find_category_by_name(db: Session, name: str) -> Category | None:
     )
 
 
+def _authorized_chat_map() -> dict[str, str]:
+    """Restituisce {chat_id: nome_persona} per tutti gli ID configurati."""
+    mapping: dict[str, str] = {}
+    if settings.TELEGRAM_CHAT_ID:
+        mapping[settings.TELEGRAM_CHAT_ID] = "Pietro"
+    if settings.TELEGRAM_CHAT_ID_GRETA:
+        mapping[settings.TELEGRAM_CHAT_ID_GRETA] = "Greta"
+    return mapping
+
+
 @router.post("/webhook")
 def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
     message = payload.get("message")
@@ -56,24 +66,31 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
         return {"ok": True}
 
     chat_id = str(message.get("chat", {}).get("id", ""))
-    if not settings.TELEGRAM_CHAT_ID or chat_id != settings.TELEGRAM_CHAT_ID:
+    chat_map = _authorized_chat_map()
+
+    if not chat_map or chat_id not in chat_map:
         logger.warning("Messaggio Telegram da chat non autorizzata: %s", chat_id)
         return {"ok": True}
+
+    # Persona dedotta dall'account che ha scritto — non serve #hashtag
+    auto_person = chat_map[chat_id]
 
     main_text, tags = extract_hashtags(message["text"])
     parsed = parse_message(main_text)
     if parsed is None:
         send_telegram_message(
-            'Non ho capito l\'importo. Scrivi ad esempio: "25.50 Spesa supermercato #Alimentari #Pietro #Conto Principale" '
+            'Non ho capito l\'importo. Scrivi ad esempio: "25.50 Spesa supermercato #Alimentari #Conto Principale" '
             'per una uscita, o "+1200 Stipendio #Stipendio Pietro" per una entrata '
-            "(categoria/persona/conto sono facoltativi)."
+            "(categoria e conto sono facoltativi, la persona viene rilevata automaticamente)."
         )
         return {"ok": True}
 
     movement_type, amount, description = parsed
+    # Sintassi: "importo descrizione #categoria #conto"
+    # La persona è automatica dal chat_id, non serve più come hashtag
+    person_name = auto_person
     category_name = tags[0] if len(tags) > 0 else None
-    person_name = tags[1] if len(tags) > 1 else None
-    account_name = tags[2] if len(tags) > 2 else None
+    account_name = tags[1] if len(tags) > 1 else None
 
     category = find_category_by_name(db, category_name) if category_name else None
     if category:
