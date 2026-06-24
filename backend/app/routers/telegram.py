@@ -81,7 +81,8 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
         send_telegram_message(
             'Non ho capito l\'importo. Scrivi ad esempio: "25.50 Spesa supermercato #Alimentari #Conto Principale" '
             'per una uscita, o "+1200 Stipendio #Stipendio Pietro" per una entrata '
-            "(categoria e conto sono facoltativi, la persona viene rilevata automaticamente)."
+            "(categoria e conto sono facoltativi, la persona viene rilevata automaticamente).",
+            chat_id=chat_id,
         )
         return {"ok": True}
 
@@ -125,5 +126,8 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
     suffix = f" ({', '.join(details)})" if details else ""
 
     icon = "💰" if movement_type == "income" else "✅"
-    send_telegram_message(f"{icon} Registrato: {movement.amount:.2f}€ — {movement.description}{suffix}")
+    send_telegram_message(
+        f"{icon} Registrato: {movement.amount:.2f}€ — {movement.description}{suffix}",
+        chat_id=chat_id,
+    )
     return {"ok": True}
