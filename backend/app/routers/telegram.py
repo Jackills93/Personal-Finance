@@ -9,14 +9,14 @@ from app.category_guess import guess_category_id
 from app.config import settings
 from app.database import get_db
 from app.models import Category
-from app.schemas.movement import MovementCreate
+from app.schemas.movement import MovementCreate, MovementType
 from app.services import create_movement_and_notify
 from app.telegram_client import send_telegram_message
 
 router = APIRouter(prefix="/telegram", tags=["telegram"])
 logger = logging.getLogger(__name__)
 
-AMOUNT_RE = re.compile(r"\d+(?:[.,]\d+)?")
+AMOUNT_RE = re.compile(r"([+-]?)\s*(\d+(?:[.,]\d+)?)")
 
 
 def extract_hashtags(text: str) -> tuple[str, list[str]]:
@@ -30,13 +30,16 @@ def extract_hashtags(text: str) -> tuple[str, list[str]]:
     return main_text, tags
 
 
-def parse_expense_message(text: str) -> tuple[float, str] | None:
+def parse_message(text: str) -> tuple[MovementType, float, str] | None:
     match = AMOUNT_RE.search(text)
     if not match:
         return None
-    amount = float(match.group(0).replace(",", "."))
+    sign, digits = match.groups()
+    amount = float(digits.replace(",", "."))
+    movement_type: MovementType = "income" if sign == "+" else "expense"
     description = (text[: match.start()] + text[match.end() :]).strip()
-    return amount, description or "Spesa da Telegram"
+    default_desc = "Entrata da Telegram" if movement_type == "income" else "Spesa da Telegram"
+    return movement_type, amount, description or default_desc
 
 
 def find_category_by_name(db: Session, name: str) -> Category | None:
@@ -58,26 +61,32 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
         return {"ok": True}
 
     main_text, tags = extract_hashtags(message["text"])
-    parsed = parse_expense_message(main_text)
+    parsed = parse_message(main_text)
     if parsed is None:
         send_telegram_message(
             'Non ho capito l\'importo. Scrivi ad esempio: "25.50 Spesa supermercato #Alimentari #Pietro #Conto Principale" '
+            'per una uscita, o "+1200 Stipendio #Stipendio Pietro" per una entrata '
             "(categoria/persona/conto sono facoltativi)."
         )
         return {"ok": True}
 
-    amount, description = parsed
+    movement_type, amount, description = parsed
     category_name = tags[0] if len(tags) > 0 else None
     person_name = tags[1] if len(tags) > 1 else None
     account_name = tags[2] if len(tags) > 2 else None
 
     category = find_category_by_name(db, category_name) if category_name else None
-    category_id = category.id if category else guess_category_id(db, description)
+    if category:
+        category_id = category.id
+    elif movement_type == "expense":
+        category_id = guess_category_id(db, description)
+    else:
+        category_id = None
 
     movement = create_movement_and_notify(
         db,
         MovementCreate(
-            type="expense",
+            type=movement_type,
             description=description,
             amount=amount,
             date=date.today(),
@@ -98,5 +107,6 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
         details.append(f"conto: {account_name}")
     suffix = f" ({', '.join(details)})" if details else ""
 
-    send_telegram_message(f"✅ Registrato: {movement.amount:.2f}€ — {movement.description}{suffix}")
+    icon = "💰" if movement_type == "income" else "✅"
+    send_telegram_message(f"{icon} Registrato: {movement.amount:.2f}€ — {movement.description}{suffix}")
     return {"ok": True}

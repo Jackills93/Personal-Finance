@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import accounts, categories, movements, persons, recurring, telegram
+from app.routers import accounts, categories, goals, investments, movements, persons, recurring, telegram
 
 app = FastAPI(title="Bilancio API")
 
@@ -20,6 +20,8 @@ app.include_router(recurring.router)
 app.include_router(telegram.router)
 app.include_router(accounts.router)
 app.include_router(persons.router)
+app.include_router(goals.router)
+app.include_router(investments.router)
 
 
 @app.get("/health")

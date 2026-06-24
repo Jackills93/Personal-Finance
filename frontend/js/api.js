@@ -253,3 +253,95 @@ async function runDueRecurringAPI(contiList = []) {
   const rows = await apiRequest("/recurring/run-due", { method: "POST" });
   return rows.map((m) => movementFromAPI(m, contiList));
 }
+
+/* ---------- OBIETTIVI ---------- */
+function goalFromAPI(g) {
+  return {
+    id: g.id,
+    name: g.name,
+    target: Number(g.target),
+    current: Number(g.current),
+    deadline: g.deadline || null,
+  };
+}
+function goalToAPI(g) {
+  return {
+    name: g.name,
+    target: g.target,
+    current: g.current ?? 0,
+    deadline: g.deadline || null,
+  };
+}
+
+async function loadGoalsFromAPI() {
+  const rows = await apiRequest("/goals");
+  return rows.map(goalFromAPI);
+}
+async function createGoalAPI(localGoal) {
+  const row = await apiRequest("/goals", {
+    method: "POST",
+    body: JSON.stringify(goalToAPI(localGoal)),
+  });
+  return goalFromAPI(row);
+}
+async function updateGoalAPI(id, partial) {
+  const row = await apiRequest(`/goals/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(partial),
+  });
+  return goalFromAPI(row);
+}
+async function deleteGoalAPI(id) {
+  await apiRequest(`/goals/${id}`, { method: "DELETE" });
+}
+
+/* ---------- INVESTIMENTI ---------- */
+function investmentFromAPI(inv) {
+  return {
+    id: inv.id,
+    ticker: inv.ticker,
+    isin: inv.isin || null,
+    name: inv.name,
+    type: inv.type,
+    sector: inv.sector,
+    qty: Number(inv.qty),
+    avgPrice: Number(inv.avg_price),
+    curPrice: Number(inv.cur_price),
+    addedAt: inv.added_at,
+    updatedAt: inv.updated_at,
+  };
+}
+function investmentToAPI(inv) {
+  return {
+    ticker: inv.ticker,
+    isin: inv.isin || null,
+    name: inv.name,
+    type: inv.type,
+    sector: inv.sector,
+    qty: inv.qty,
+    avg_price: inv.avgPrice,
+    cur_price: inv.curPrice,
+  };
+}
+
+async function loadInvestmentsFromAPI() {
+  const rows = await apiRequest("/investments");
+  return rows.map(investmentFromAPI);
+}
+async function createInvestmentAPI(localInv) {
+  const row = await apiRequest("/investments", {
+    method: "POST",
+    body: JSON.stringify(investmentToAPI(localInv)),
+  });
+  return investmentFromAPI(row);
+}
+async function updateInvestmentAPI(id, partial) {
+  const row = await apiRequest(`/investments/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(partial),
+  });
+  return investmentFromAPI(row);
+}
+async function deleteInvestmentAPI(id) {
+  await apiRequest(`/investments/${id}`, { method: "DELETE" });
+}
