@@ -23,10 +23,19 @@ async function apiRequest(path, options = {}) {
 }
 
 async function checkPassword(password) {
-  const res = await fetch(`${API_BASE_URL}/categories`, {
-    headers: { "X-App-Password": password },
-  });
-  return res.ok;
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), 65000);
+  try {
+    const res = await fetch(`${API_BASE_URL}/categories`, {
+      headers: { "X-App-Password": password },
+      signal: controller.signal,
+    });
+    return res.ok ? "ok" : "wrong";
+  } catch (e) {
+    return "network";
+  } finally {
+    clearTimeout(tid);
+  }
 }
 
 /* ---------- CATEGORIE ---------- */

@@ -2233,15 +2233,30 @@ document.getElementById('mDate').value=todayISO();
 document.getElementById('giroDate').value=todayISO();
 
 async function ensureAuthenticated(){
-  const stored=localStorage.getItem(AUTH_STORAGE_KEY);
-  if(stored && await checkPassword(stored)) return;
-  if(stored) localStorage.removeItem(AUTH_STORAGE_KEY);
-
   const gate=document.getElementById('authGate');
   const input=document.getElementById('authPasswordInput');
   const error=document.getElementById('authError');
   const submitBtn=document.getElementById('authSubmitBtn');
+
+  function setLoading(on){
+    submitBtn.disabled=on;
+    submitBtn.textContent=on?'Verifica…':'Entra';
+  }
+
+  // Se c'è già una password salvata, verificala silenziosamente
+  const stored=localStorage.getItem(AUTH_STORAGE_KEY);
+  if(stored){
+    setLoading(true);
+    const result=await checkPassword(stored);
+    setLoading(false);
+    if(result==='ok'){ gate.classList.add('hidden'); return; }
+    if(result==='wrong') localStorage.removeItem(AUTH_STORAGE_KEY);
+    // 'network': backend sleeping — mostra gate, l'utente può riprovare
+  }
+
+  // Mostra gate
   gate.classList.remove('hidden');
+  error.style.display='none';
 
   while(true){
     const pw=await new Promise(resolve=>{
@@ -2251,13 +2266,21 @@ async function ensureAuthenticated(){
       input.addEventListener('keydown',onKey);
       input.focus();
     });
-    if(await checkPassword(pw)){
+    error.style.display='none';
+    setLoading(true);
+    const result=await checkPassword(pw);
+    setLoading(false);
+    if(result==='ok'){
       localStorage.setItem(AUTH_STORAGE_KEY,pw);
       gate.classList.add('hidden');
       return;
     }
+    error.textContent = result==='network'
+      ? 'Server non raggiungibile — riprova tra qualche secondo.'
+      : 'Password errata.';
     error.style.display='block';
     input.value='';
+    input.focus();
   }
 }
 
