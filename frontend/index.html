@@ -364,9 +364,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <option value="ARS">$ ARS</option>
       </select>
     </div>
-    <span class="save-indicator" id="saveIndicator">● Salvato</span>
     <div class="action-group">
-      <button class="primary" id="btnSave" title="Salva">💾 Salva</button>
     </div>
   </div>
 </header>
@@ -1064,19 +1062,19 @@ function applyCurrencyEverywhere(val) {
 
 document.getElementById('currencySelect').addEventListener('change', function(){
   applyCurrencyEverywhere(this.value);
-  markDirty();
+  saveData();
   toast(`Valuta impostata: ${currentCurrency}`);
 });
 
 document.getElementById('setCurrencySelect').addEventListener('change', function(){
   applyCurrencyEverywhere(this.value);
-  markDirty();
+  saveData();
   toast(`Valuta impostata: ${currentCurrency}`);
 });
 
 document.getElementById('setLangSelect').addEventListener('change', function(){
   applyLang(this.value);
-  markDirty();
+  saveData();
   renderAll();
   toast(this.value === 'en' ? 'Language set: English' : 'Lingua impostata: Italiano');
 });
@@ -1085,7 +1083,6 @@ document.getElementById('setLangSelect').addEventListener('change', function(){
    STORAGE
 ==================================================== */
 const STORE_KEY = "bilancio_data_v3";
-let DIRTY = false;
 
 function loadData(){
   try {
@@ -1111,22 +1108,8 @@ function loadData(){
 
 let DATA = loadData();
 
-function markDirty(){
-  DIRTY=true;
-  const ind=document.getElementById('saveIndicator');
-  ind.textContent='● Non salvato';
-  ind.className='save-indicator unsaved';
-}
-
 function saveData(){
-  try {
-    localStorage.setItem(STORE_KEY,JSON.stringify(DATA));
-    DIRTY=false;
-    const ind=document.getElementById('saveIndicator');
-    ind.textContent='● Salvato';
-    ind.className='save-indicator saved';
-    toast('Dati salvati');
-  } catch(e){ toast('Errore salvataggio: '+e.message,true); }
+  try { localStorage.setItem(STORE_KEY,JSON.stringify(DATA)); } catch(e){}
 }
 
 function uid(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
@@ -1146,8 +1129,6 @@ function toast(msg,err=false){
 /* ====================================================
    SAVE / EXPORT / IMPORT JSON
 ==================================================== */
-document.getElementById('btnSave').addEventListener('click',saveData);
-
 document.getElementById('btnExport').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -1168,8 +1149,9 @@ document.getElementById('importJson').addEventListener('change', function(){
       if(!confirm(`Importare ${nMov} movimenti nel database?\nI duplicati verranno ignorati automaticamente.`)) return;
 
       // Ripristina preferenze locali
-      if(parsed.currency){ applyCurrencyEverywhere(parsed.currency); markDirty(); }
-      if(parsed.language){ applyLang(parsed.language); markDirty(); }
+      if(parsed.currency) applyCurrencyEverywhere(parsed.currency);
+      if(parsed.language) applyLang(parsed.language);
+      saveData();
 
       // Set per deduplicazione movimenti (data+importo+desc+tipo)
       const existingKeys = new Set(
@@ -2506,9 +2488,6 @@ async function initFromServer(){
   initFromServer();
 })();
 
-window.addEventListener('beforeunload',e=>{
-  if(DIRTY){e.preventDefault();e.returnValue='Modifiche non salvate. Uscire?';}
-});
 
 /* ====================================================
    ICONA ATTENZIONE CATEGORIA — limite superato
