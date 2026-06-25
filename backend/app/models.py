@@ -100,6 +100,14 @@ class Investment(Base):
     updated_at: Mapped[date_type] = mapped_column(Date, nullable=False, server_default=func.current_date())
 
 
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class RecurringExpense(Base):
     __tablename__ = "recurring_expenses"
     __table_args__ = (

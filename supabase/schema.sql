@@ -142,3 +142,11 @@ create table if not exists recurring_expenses (
   created_at          timestamptz not null default now()
 );
 alter table recurring_expenses enable row level security;
+
+-- Impostazioni app (configurazione Telegram, nome app, ecc.)
+create table if not exists app_settings (
+  key        text primary key,
+  value      text,
+  updated_at timestamptz not null default now()
+);
+alter table app_settings enable row level security;

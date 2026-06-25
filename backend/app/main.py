@@ -1,10 +1,30 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import accounts, categories, goals, investments, movements, persons, recurring, telegram
+from app.database import SessionLocal
+from app.routers import accounts, archive, categories, goals, investments, movements, persons, recurring, telegram
+from app.routers.settings import apply_to_runtime, _load_db_settings
+from app.routers import settings as settings_router
 
-app = FastAPI(title="Bilancio API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Carica impostazioni DB all'avvio per sovrascrivere eventuali env var
+    try:
+        db = SessionLocal()
+        db_cfg = _load_db_settings(db)
+        apply_to_runtime(db_cfg)
+    except Exception:
+        pass
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title="Bilancio API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,6 +42,8 @@ app.include_router(accounts.router)
 app.include_router(persons.router)
 app.include_router(goals.router)
 app.include_router(investments.router)
+app.include_router(settings_router.router)
+app.include_router(archive.router)
 
 
 @app.get("/health")

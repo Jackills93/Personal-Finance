@@ -4,13 +4,12 @@
    esistente (DATA.categories / DATA.movements) già usa.
    Cambia API_BASE_URL per puntare al backend in produzione.
 ==================================================== */
-const API_BASE_URL = "https://personal-finance-gya1.onrender.com";
-const AUTH_STORAGE_KEY = "bilancio_app_password";
+// API_BASE_URL e APP_PASSWORD sono definiti in js/config.js (gitignored)
+// Vedi js/config.example.js per il formato
 
 async function apiRequest(path, options = {}) {
-  const password = localStorage.getItem(AUTH_STORAGE_KEY) || "";
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json", "X-App-Password": password },
+    headers: { "Content-Type": "application/json", "X-App-Password": APP_PASSWORD },
     ...options,
   });
   if (!res.ok) {
@@ -20,22 +19,6 @@ async function apiRequest(path, options = {}) {
   }
   if (res.status === 204) return null;
   return res.json();
-}
-
-async function checkPassword(password) {
-  const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), 65000);
-  try {
-    const res = await fetch(`${API_BASE_URL}/categories`, {
-      headers: { "X-App-Password": password },
-      signal: controller.signal,
-    });
-    return res.ok ? "ok" : "wrong";
-  } catch (e) {
-    return "network";
-  } finally {
-    clearTimeout(tid);
-  }
 }
 
 /* ---------- CATEGORIE ---------- */
@@ -353,4 +336,26 @@ async function updateInvestmentAPI(id, partial) {
 }
 async function deleteInvestmentAPI(id) {
   await apiRequest(`/investments/${id}`, { method: "DELETE" });
+}
+
+/* ---------- IMPOSTAZIONI ---------- */
+async function loadSettingsAPI() {
+  return await apiRequest("/settings");
+}
+async function saveSettingsAPI(data) {
+  return await apiRequest("/settings", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+/* ---------- ARCHIVIO ---------- */
+async function loadArchiveYearsAPI() {
+  return await apiRequest("/archive/years");
+}
+async function exportArchiveYearAPI(year) {
+  return await apiRequest(`/archive/${year}`);
+}
+async function deleteArchiveYearAPI(year) {
+  return await apiRequest(`/archive/${year}`, { method: "DELETE" });
 }

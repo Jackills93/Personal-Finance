@@ -3,6 +3,7 @@ backend/.env
 psw_DB.txt
 *.pem
 *.key
+frontend/js/config.js
 
 # Python
 backend/venv/

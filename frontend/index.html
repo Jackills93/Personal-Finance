@@ -314,21 +314,6 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <body>
 <div id="toast" class="toast"></div>
 
-<!-- GATE ACCESSO -->
-<div class="modal-overlay" id="authGate">
-  <div class="modal-box">
-    <h3>Accesso protetto</h3>
-    <div class="field">
-      <label>Password</label>
-      <input type="password" id="authPasswordInput" placeholder="Inserisci la password" autofocus>
-    </div>
-    <div id="authError" style="color:var(--bad);font-size:12px;margin-top:6px;display:none;">Password errata.</div>
-    <div class="modal-actions">
-      <button class="primary" id="authSubmitBtn">Entra</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL MODIFICA LIMITE CATEGORIA -->
 <div class="modal-overlay hidden" id="limitModal">
   <div class="modal-box">
@@ -402,6 +387,8 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <button data-view="investimenti">Investimenti</button>
   <button data-view="importa">Importa Estratto</button>
   <button data-view="bilancio">Bilancio</button>
+  <button data-view="archivio">Archivio</button>
+  <button data-view="impostazioni">Impostazioni</button>
 </nav>
 
 <!-- ==================== DASHBOARD ==================== -->
@@ -878,8 +865,86 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 </section>
 
+<!-- ==================== ARCHIVIO ==================== -->
+<section class="view" id="view-archivio">
+  <div class="panel">
+    <h2>Archivio anni</h2>
+    <p style="color:var(--ink-dim);font-size:13px;margin:0 0 16px;">
+      Scarica i movimenti di un anno come file JSON, poi eliminali dal database per alleggerire i dati.
+    </p>
+    <div id="archivioList" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="empty">Caricamento…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== IMPOSTAZIONI ==================== -->
+<section class="view" id="view-impostazioni">
+  <div class="panel">
+    <h2>Configurazione Telegram</h2>
+    <p style="color:var(--ink-dim);font-size:13px;margin:0 0 20px;">
+      Configura il bot Telegram per ricevere notifiche e registrare spese via messaggio.
+      Dopo il salvataggio le impostazioni sono attive senza riavviare il server.
+    </p>
+    <div class="form-row">
+      <div class="field" style="flex:1;min-width:260px;">
+        <label>Bot Token</label>
+        <input type="password" id="setTgToken" placeholder="123456789:AAF…">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field" style="flex:1;min-width:180px;">
+        <label>Chat ID utente 1</label>
+        <input type="text" id="setTgId1" placeholder="es. 123456789">
+      </div>
+      <div class="field" style="flex:1;min-width:140px;">
+        <label>Nome utente 1</label>
+        <input type="text" id="setTgName1" placeholder="es. Pietro">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field" style="flex:1;min-width:180px;">
+        <label>Chat ID utente 2</label>
+        <input type="text" id="setTgId2" placeholder="es. 987654321">
+      </div>
+      <div class="field" style="flex:1;min-width:140px;">
+        <label>Nome utente 2</label>
+        <input type="text" id="setTgName2" placeholder="es. Greta">
+      </div>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:10px;align-items:center;">
+      <button class="primary" id="setTgSave">Salva</button>
+      <span id="setTgMsg" style="font-size:12px;color:var(--good);display:none;">Salvato ✓</span>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;">
+    <h2>Personalizzazione</h2>
+    <div class="form-row">
+      <div class="field" style="flex:1;min-width:220px;">
+        <label>Nome app</label>
+        <input type="text" id="setAppName" placeholder="es. Bilancio — Finanze Personali">
+      </div>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:10px;align-items:center;">
+      <button class="primary" id="setAppSave">Salva</button>
+      <span id="setAppMsg" style="font-size:12px;color:var(--good);display:none;">Salvato ✓</span>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;">
+    <h2>Informazioni tecniche</h2>
+    <div style="font-size:12px;color:var(--ink-dim);line-height:2;font-family:'IBM Plex Mono',monospace;">
+      <div>Backend: <span style="color:var(--ink);" id="setBackendUrl"></span></div>
+      <div>Per configurare il webhook Telegram eseguire una volta:</div>
+      <pre id="setWebhookCmd" style="background:var(--panel-2);padding:10px;border-radius:6px;overflow-x:auto;font-size:11px;margin:6px 0;white-space:pre-wrap;word-break:break-all;color:var(--accent);"></pre>
+    </div>
+  </div>
+</section>
+
 </div><!-- /shell -->
 
+<script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script>
 (function(){
@@ -2295,60 +2360,7 @@ document.getElementById('currencySelect').value=currentCurrency;
 document.getElementById('mDate').value=todayISO();
 document.getElementById('giroDate').value=todayISO();
 
-async function ensureAuthenticated(){
-  const gate=document.getElementById('authGate');
-  const input=document.getElementById('authPasswordInput');
-  const error=document.getElementById('authError');
-  const submitBtn=document.getElementById('authSubmitBtn');
-
-  function setLoading(on){
-    submitBtn.disabled=on;
-    submitBtn.textContent=on?'Verifica…':'Entra';
-  }
-
-  // Se c'è già una password salvata, verificala silenziosamente
-  const stored=localStorage.getItem(AUTH_STORAGE_KEY);
-  if(stored){
-    setLoading(true);
-    const result=await checkPassword(stored);
-    setLoading(false);
-    if(result==='ok'){ gate.classList.add('hidden'); return; }
-    if(result==='wrong') localStorage.removeItem(AUTH_STORAGE_KEY);
-    // 'network': backend sleeping — mostra gate, l'utente può riprovare
-  }
-
-  // Mostra gate
-  gate.classList.remove('hidden');
-  error.style.display='none';
-
-  while(true){
-    const pw=await new Promise(resolve=>{
-      const onSubmit=()=>{ submitBtn.removeEventListener('click',onSubmit); input.removeEventListener('keydown',onKey); resolve(input.value); };
-      const onKey=e=>{ if(e.key==='Enter') onSubmit(); };
-      submitBtn.addEventListener('click',onSubmit);
-      input.addEventListener('keydown',onKey);
-      input.focus();
-    });
-    error.style.display='none';
-    setLoading(true);
-    const result=await checkPassword(pw);
-    setLoading(false);
-    if(result==='ok'){
-      localStorage.setItem(AUTH_STORAGE_KEY,pw);
-      gate.classList.add('hidden');
-      return;
-    }
-    error.textContent = result==='network'
-      ? 'Server non raggiungibile — riprova tra qualche secondo.'
-      : 'Password errata.';
-    error.style.display='block';
-    input.value='';
-    input.focus();
-  }
-}
-
 async function initFromServer(){
-  await ensureAuthenticated();
   try {
     DATA.categories=await loadCategoriesFromAPI();
   } catch(e){ toast('Errore caricamento categorie: '+e.message,true); }
@@ -3193,7 +3205,6 @@ document.getElementById('bilRefresh').addEventListener('click', renderBilancio);
 document.getElementById('bilExportPdf').addEventListener('click', exportBilancio);
 
 document.querySelector('[data-view="bilancio"]').addEventListener('click', () => {
-  // Aggiorna select persona
   const sel = document.getElementById('bilPersona');
   const cur = sel.value;
   sel.innerHTML = '<option value="">Tutti</option>';
@@ -3205,6 +3216,101 @@ document.querySelector('[data-view="bilancio"]').addEventListener('click', () =>
   });
   renderBilancio();
 });
+
+/* ====================================================
+   ARCHIVIO
+==================================================== */
+async function renderArchivio() {
+  const el = document.getElementById('archivioList');
+  el.innerHTML = '<div class="empty">Caricamento…</div>';
+  let years;
+  try { years = await loadArchiveYearsAPI(); } catch(e) { el.innerHTML = `<div class="empty">${escH(e.message)}</div>`; return; }
+  if (!years.length) { el.innerHTML = '<div class="empty">Nessun dato da archiviare.</div>'; return; }
+  el.innerHTML = years.reverse().map(y => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);">
+      <span style="font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--ink);flex:1;">${y.year}</span>
+      <span style="font-size:12px;color:var(--ink-faint);">${y.count} movimenti</span>
+      <button class="secondary" onclick="archiviaAnno(${y.year}, this)" style="white-space:nowrap;">⬇ Scarica JSON</button>
+      <button class="icon-btn" title="Elimina tutti i movimenti del ${y.year}" onclick="eliminaAnno(${y.year}, this)" style="color:var(--bad);font-size:18px;padding:4px 8px;">✕</button>
+    </div>`).join('');
+}
+
+async function archiviaAnno(year, btn) {
+  btn.disabled = true; btn.textContent = 'Scaricamento…';
+  try {
+    const data = await exportArchiveYearAPI(year);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `bilancio_${year}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(`Archivio ${year} scaricato`);
+  } catch(e) { toast(e.message, true); }
+  btn.disabled = false; btn.textContent = '⬇ Scarica JSON';
+}
+
+async function eliminaAnno(year, btn) {
+  if (!confirm(`Eliminare tutti i movimenti del ${year}? Questa azione è irreversibile.`)) return;
+  btn.disabled = true;
+  try {
+    const res = await deleteArchiveYearAPI(year);
+    toast(`${res.deleted} movimenti del ${year} eliminati`);
+    DATA.movements = DATA.movements.filter(m => !m.date.startsWith(String(year)));
+    renderAll();
+    renderArchivio();
+  } catch(e) { toast(e.message, true); btn.disabled = false; }
+}
+
+document.querySelector('[data-view="archivio"]').addEventListener('click', renderArchivio);
+
+/* ====================================================
+   IMPOSTAZIONI
+==================================================== */
+async function renderImpostazioni() {
+  document.getElementById('setBackendUrl').textContent = API_BASE_URL;
+  document.getElementById('setWebhookCmd').textContent =
+    `curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=${API_BASE_URL}/telegram/webhook"`;
+  try {
+    const cfg = await loadSettingsAPI();
+    if (cfg.telegram_bot_token) document.getElementById('setTgToken').value = cfg.telegram_bot_token;
+    if (cfg.telegram_chat_id_1)  document.getElementById('setTgId1').value   = cfg.telegram_chat_id_1;
+    if (cfg.telegram_chat_id_1_name) document.getElementById('setTgName1').value = cfg.telegram_chat_id_1_name;
+    if (cfg.telegram_chat_id_2)  document.getElementById('setTgId2').value   = cfg.telegram_chat_id_2;
+    if (cfg.telegram_chat_id_2_name) document.getElementById('setTgName2').value = cfg.telegram_chat_id_2_name;
+    if (cfg.app_name) document.getElementById('setAppName').value = cfg.app_name;
+  } catch(e) { toast('Errore caricamento impostazioni: ' + e.message, true); }
+}
+
+document.getElementById('setTgSave').addEventListener('click', async () => {
+  const btn = document.getElementById('setTgSave');
+  const msg = document.getElementById('setTgMsg');
+  btn.disabled = true;
+  try {
+    await saveSettingsAPI({
+      telegram_bot_token:      document.getElementById('setTgToken').value.trim(),
+      telegram_chat_id_1:      document.getElementById('setTgId1').value.trim(),
+      telegram_chat_id_1_name: document.getElementById('setTgName1').value.trim(),
+      telegram_chat_id_2:      document.getElementById('setTgId2').value.trim(),
+      telegram_chat_id_2_name: document.getElementById('setTgName2').value.trim(),
+    });
+    msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 3000);
+  } catch(e) { toast(e.message, true); }
+  btn.disabled = false;
+});
+
+document.getElementById('setAppSave').addEventListener('click', async () => {
+  const btn = document.getElementById('setAppSave');
+  const msg = document.getElementById('setAppMsg');
+  btn.disabled = true;
+  try {
+    await saveSettingsAPI({ app_name: document.getElementById('setAppName').value.trim() });
+    msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 3000);
+  } catch(e) { toast(e.message, true); }
+  btn.disabled = false;
+});
+
+document.querySelector('[data-view="impostazioni"]').addEventListener('click', renderImpostazioni);
 
 })();
 </script>

@@ -53,9 +53,9 @@ def _authorized_chat_map() -> dict[str, str]:
     """Restituisce {chat_id: nome_persona} per tutti gli ID configurati."""
     mapping: dict[str, str] = {}
     if settings.TELEGRAM_CHAT_ID:
-        mapping[settings.TELEGRAM_CHAT_ID] = "Pietro"
+        mapping[settings.TELEGRAM_CHAT_ID] = settings.TELEGRAM_CHAT_ID_NAME
     if settings.TELEGRAM_CHAT_ID_GRETA:
-        mapping[settings.TELEGRAM_CHAT_ID_GRETA] = "Greta"
+        mapping[settings.TELEGRAM_CHAT_ID_GRETA] = settings.TELEGRAM_CHAT_ID_GRETA_NAME
     return mapping
 
 
