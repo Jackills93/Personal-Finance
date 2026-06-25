@@ -367,10 +367,6 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <span class="save-indicator" id="saveIndicator">● Salvato</span>
     <div class="action-group">
       <button class="primary" id="btnSave" title="Salva">💾 Salva</button>
-      <button id="btnExport" title="Esporta JSON">⬇ JSON</button>
-      <label title="Importa JSON" style="cursor:pointer;">
-        ⬆ JSON<input type="file" accept=".json" id="importJson" style="display:none;">
-      </label>
     </div>
   </div>
 </header>
@@ -727,6 +723,16 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <button class="ghost" id="deselectAllImport">Deseleziona tutti</button>
     </div>
   </div>
+  <div class="panel" style="margin-top:16px;">
+    <h2>Importa / Esporta dati app <small>Backup completo in formato JSON</small></h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <label class="secondary" style="cursor:pointer;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);padding:9px 16px;border-radius:6px;font-size:13px;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+        ⬆ Importa JSON<input type="file" accept=".json" id="importJson" style="display:none;">
+      </label>
+      <button id="btnExport" class="secondary">⬇ Esporta JSON</button>
+      <span style="font-size:12px;color:var(--ink-faint);">Ripristina o trasferisci tutti i dati dell'app</span>
+    </div>
+  </div>
 </section>
 
 <!-- ==================== INVESTIMENTI ==================== -->
@@ -741,35 +747,30 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
   <div class="panel" style="margin-bottom:16px;">
     <h2>Aggiungi posizione</h2>
-    <div class="form-row" style="align-items:flex-end;">
-      <div class="field" style="flex:0 0 260px;">
+    <div class="form-row" style="align-items:flex-end;flex-wrap:wrap;">
+      <div class="field" style="flex:0 0 230px;">
         <label>Cerca titolo / ETF / ticker / ISIN</label>
         <div style="position:relative;">
           <input type="text" id="invSearch" placeholder="Es. AAPL, VWCE, IE00BK5BQT80…" autocomplete="off">
           <div id="invSuggest" style="position:absolute;top:100%;left:0;right:0;background:var(--panel);border:1px solid var(--accent-dim);border-radius:0 0 6px 6px;z-index:200;display:none;max-height:220px;overflow-y:auto;"></div>
         </div>
-        <div style="margin-top:4px;display:flex;align-items:center;gap:6px;">
-          <span style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;">ISIN rilevato:</span>
-          <span id="invIsinDisplay" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:.05em;">—</span>
-        </div>
       </div>
-      <div class="field" style="flex:0 0 145px;">
-        <label>ISIN (manuale)</label>
+      <div class="field" style="flex:0 0 150px;">
+        <label>ISIN</label>
         <input type="text" id="invIsinManual" placeholder="Es. IE00BK5BQT80" maxlength="12" style="font-family:'IBM Plex Mono',monospace;letter-spacing:.05em;text-transform:uppercase;">
-        <span style="font-size:10px;color:var(--ink-faint);margin-top:2px;">Lascia vuoto se trovato in automatico</span>
       </div>
-      <div class="field" style="flex:0 0 110px;"><label>Tipo</label><select id="invType"><option value="azione">Azione</option><option value="etf">ETF</option><option value="obbligazione">Obbligazione</option><option value="crypto">Crypto</option><option value="altro">Altro</option></select></div>
       <div class="field" style="flex:0 0 100px;"><label>Quantità</label><input type="number" id="invQty" placeholder="1" step="0.0001" min="0"></div>
       <div class="field" style="flex:0 0 130px;"><label id="invPriceLabel">Prezzo medio</label><input type="number" id="invPrice" placeholder="0.00" step="0.01" min="0"></div>
       <div class="field" style="flex:0 0 130px;"><label id="invCurPriceLabel">Prezzo attuale</label><input type="number" id="invCurPrice" placeholder="0.00" step="0.01" min="0"></div>
-      <div class="field" style="flex:0 0 120px;"><label>Settore</label><select id="invSector">
-        <option>Tech</option><option>Finance</option><option>Healthcare</option><option>Energy</option>
-        <option>Consumer</option><option>Industrial</option><option>Real Estate</option>
-        <option>Materials</option><option>ETF</option><option>Crypto</option><option>Bond</option>
-        <option>Materie Prime</option><option>Altro</option>
-      </select></div>
       <div class="field" style="flex:0 0 auto;"><label>&nbsp;</label><button class="primary" id="addInvBtn">Aggiungi</button></div>
     </div>
+    <div style="margin-top:8px;display:flex;align-items:center;gap:8px;min-height:20px;">
+      <span style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;">Rilevato:</span>
+      <span id="invDetectedBadge" style="font-size:12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;">—</span>
+    </div>
+    <!-- Campi nascosti compilati automaticamente -->
+    <select id="invType" style="display:none;"><option value="azione">Azione</option><option value="etf">ETF</option><option value="obbligazione">Obbligazione</option><option value="crypto">Crypto</option><option value="altro">Altro</option></select>
+    <select id="invSector" style="display:none;"><option>Tech</option><option>Finance</option><option>Healthcare</option><option>Energy</option><option>Consumer</option><option>Industrial</option><option>Real Estate</option><option>Materials</option><option>ETF</option><option>Crypto</option><option>Bond</option><option>Materie Prime</option><option>Altro</option></select>
   </div>
 
   <div style="display:grid;grid-template-columns:1.8fr 1fr;gap:16px;margin-bottom:16px;">
@@ -933,6 +934,42 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 
   <div class="panel" style="margin-top:16px;">
+    <h2>Preferenze</h2>
+    <p style="color:var(--ink-dim);font-size:13px;margin:0 0 20px;">
+      Lingua e valuta vengono salvate localmente nel browser.
+    </p>
+    <div class="form-row">
+      <div class="field" style="flex:1;min-width:180px;">
+        <label>Lingua</label>
+        <select id="setLangSelect">
+          <option value="it">🇮🇹 Italiano</option>
+          <option value="en">🇬🇧 English</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:180px;">
+        <label>Valuta</label>
+        <select id="setCurrencySelect">
+          <option value="EUR">€ EUR</option>
+          <option value="USD">$ USD</option>
+          <option value="GBP">£ GBP</option>
+          <option value="CHF">CHF</option>
+          <option value="JPY">¥ JPY</option>
+          <option value="CAD">CA$ CAD</option>
+          <option value="AUD">A$ AUD</option>
+          <option value="NOK">kr NOK</option>
+          <option value="SEK">kr SEK</option>
+          <option value="DKK">kr DKK</option>
+          <option value="PLN">zł PLN</option>
+          <option value="CZK">Kč CZK</option>
+          <option value="HUF">Ft HUF</option>
+          <option value="RON">lei RON</option>
+          <option value="BGN">лв BGN</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;">
     <h2>Informazioni tecniche</h2>
     <div style="font-size:12px;color:var(--ink-dim);line-height:2;font-family:'IBM Plex Mono',monospace;">
       <div>Backend: <span style="color:var(--ink);" id="setBackendUrl"></span></div>
@@ -979,6 +1016,7 @@ const CURRENCIES = {
 };
 
 let currentCurrency = 'EUR';
+let currentLang = 'it';
 
 function fmtCur(n){
   const v = Number(n)||0;
@@ -989,6 +1027,11 @@ function fmtCur(n){
   } catch(e) {
     return info.symbol + v.toFixed(cur==='JPY'||cur==='HUF'?0:2);
   }
+}
+
+function fmtNum(n, decimals = 2) {
+  const locale = currentLang === 'en' ? 'en-US' : 'it-IT';
+  return Number(n).toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: decimals });
 }
 
 function setCurrencyLabels(){
@@ -1004,13 +1047,38 @@ function setCurrencyLabels(){
   pairs.forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
 }
 
-document.getElementById('currencySelect').addEventListener('change', function(){
-  currentCurrency = this.value;
-  DATA.currency = currentCurrency;
-  markDirty();
+function applyLang(lang) {
+  currentLang = lang;
+  DATA.language = lang;
+  document.getElementById('setLangSelect').value = lang;
+}
+
+function applyCurrencyEverywhere(val) {
+  currentCurrency = val;
+  DATA.currency = val;
+  document.getElementById('currencySelect').value = val;
+  document.getElementById('setCurrencySelect').value = val;
   setCurrencyLabels();
   renderAll();
+}
+
+document.getElementById('currencySelect').addEventListener('change', function(){
+  applyCurrencyEverywhere(this.value);
+  markDirty();
   toast(`Valuta impostata: ${currentCurrency}`);
+});
+
+document.getElementById('setCurrencySelect').addEventListener('change', function(){
+  applyCurrencyEverywhere(this.value);
+  markDirty();
+  toast(`Valuta impostata: ${currentCurrency}`);
+});
+
+document.getElementById('setLangSelect').addEventListener('change', function(){
+  applyLang(this.value);
+  markDirty();
+  renderAll();
+  toast(this.value === 'en' ? 'Language set: English' : 'Lingua impostata: Italiano');
 });
 
 /* ====================================================
@@ -1101,8 +1169,12 @@ document.getElementById('importJson').addEventListener('change',function(){
       if(!DATA.persone) DATA.persone=['Io'];
       if(!DATA.conti) DATA.conti=[];
       if(!DATA.currency) DATA.currency='EUR';
+      if(!DATA.language) DATA.language='it';
       currentCurrency=DATA.currency;
+      currentLang=DATA.language;
       document.getElementById('currencySelect').value=currentCurrency;
+      document.getElementById('setCurrencySelect').value=currentCurrency;
+      document.getElementById('setLangSelect').value=currentLang;
       saveData();
       renderAll();
       toast('JSON importato');
@@ -2353,9 +2425,12 @@ function renderAll(){
   renderDashboard();
 }
 
-// Applica valuta salvata
+// Applica valuta e lingua salvate
 currentCurrency=DATA.currency||'EUR';
+currentLang=DATA.language||'it';
 document.getElementById('currencySelect').value=currentCurrency;
+document.getElementById('setCurrencySelect').value=currentCurrency;
+document.getElementById('setLangSelect').value=currentLang;
 document.getElementById('mDate').value=todayISO();
 document.getElementById('giroDate').value=todayISO();
 
@@ -2577,6 +2652,27 @@ let selectedTitolo = null;
 const invSearchEl=document.getElementById('invSearch');
 const invSuggestEl=document.getElementById('invSuggest');
 
+function invSetDetectedBadge(type, sector) {
+  const typeLabel={azione:'Azione',etf:'ETF',obbligazione:'Obbligazione',crypto:'Crypto',altro:'Altro'};
+  document.getElementById('invDetectedBadge').textContent=(typeLabel[type]||type)+' · '+(sector||'Altro');
+}
+
+document.getElementById('invIsinManual').addEventListener('input',function(){
+  const isin=this.value.trim().toUpperCase();
+  if(isin.length<2) return;
+  const prefix=isin.substring(0,2);
+  const etfPrefixes=['IE','LU','FR','DE'];
+  const cryptoPrefixes=['XB','XC'];
+  let type='azione';
+  if(etfPrefixes.includes(prefix)) type='etf';
+  if(cryptoPrefixes.includes(prefix)) type='crypto';
+  const secMap={azione:'Tech',etf:'ETF',crypto:'Crypto'};
+  const sector=secMap[type]||'Altro';
+  document.getElementById('invType').value=type;
+  document.getElementById('invSector').value=sector;
+  invSetDetectedBadge(type,sector);
+});
+
 invSearchEl.addEventListener('input',function(){
   const q=this.value.trim().toLowerCase();
   invSuggestEl.innerHTML='';
@@ -2613,12 +2709,10 @@ invSearchEl.addEventListener('input',function(){
       invSuggestEl.style.display='none';
       document.getElementById('invType').value=t.tp;
       const secMap={'azione':'Tech','etf':'ETF','crypto':'Crypto','obbligazione':'Bond','altro':'Altro'};
-      document.getElementById('invSector').value=t.s||secMap[t.tp]||'Altro';
-      // Mostra ISIN nel campo dedicato se presente
-      if(t.isin) document.getElementById('invIsinDisplay').textContent=t.isin;
-      else document.getElementById('invIsinDisplay').textContent='—';
-      // Popola anche il campo manuale per trasparenza (editabile)
+      const sector=t.s||secMap[t.tp]||'Altro';
+      document.getElementById('invSector').value=sector;
       document.getElementById('invIsinManual').value=t.isin||'';
+      invSetDetectedBadge(t.tp, sector);
       document.getElementById('invQty').focus();
     });
     div.addEventListener('mouseover',()=>div.style.background='var(--panel-2)');
@@ -2633,7 +2727,7 @@ invSearchEl.addEventListener('input',function(){
     e.preventDefault();
     selectedTitolo={t:this.value.toUpperCase(),n:this.value,isin:'',tp:document.getElementById('invType').value,s:'Altro'};
     invSearchEl.value=this.value.toUpperCase();
-    document.getElementById('invIsinDisplay').textContent='—';
+    document.getElementById('invDetectedBadge').textContent='—';
     document.getElementById('invIsinManual').value='';
     invSuggestEl.style.display='none';
   });
@@ -2688,7 +2782,7 @@ document.getElementById('addInvBtn').addEventListener('click',async ()=>{
   } catch(e){ toast('Errore: '+e.message,true); return; }
 
   invSearchEl.value='';selectedTitolo=null;
-  document.getElementById('invIsinDisplay').textContent='—';
+  document.getElementById('invDetectedBadge').textContent='—';
   document.getElementById('invIsinManual').value='';
   document.getElementById('invQty').value='';
   document.getElementById('invPrice').value='';
@@ -2851,7 +2945,7 @@ function renderInvestimenti(){
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escH(i.name)}">${escH(i.name)}</td>
       <td><span class="badge">${i.type}</span></td>
       <td><span class="badge" style="background:${sColor}22;color:${sColor};">${i.sector}</span></td>
-      <td class="amt">${i.qty.toLocaleString('it-IT',{maximumFractionDigits:4})}</td>
+      <td class="amt">${fmtNum(i.qty,4)}</td>
       <td class="amt">${fmtCur(i.avgPrice)}</td>
       <td class="amt" style="padding:4px 10px;">
         <input type="number" value="${i.curPrice}" data-inv-price="${i.id}"
@@ -3239,7 +3333,7 @@ async function renderArchivio() {
       <span style="font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--ink);flex:1;">${y.year}</span>
       <span style="font-size:12px;color:var(--ink-faint);">${y.count} movimenti</span>
       <button class="secondary" onclick="archiviaAnno(${y.year}, this)" style="white-space:nowrap;">⬇ Scarica JSON</button>
-      <button class="icon-btn" title="Elimina tutti i movimenti del ${y.year}" onclick="eliminaAnno(${y.year}, this)" style="color:var(--bad);font-size:18px;padding:4px 8px;">✕</button>
+      <button class="icon-btn" title="Elimina tutti i movimenti del ${y.year}" onclick="eliminaAnno(${y.year}, this)" style="font-size:20px;padding:4px 8px;filter:invert(30%) sepia(80%) saturate(400%) hue-rotate(320deg);">🗑️</button>
     </div>`).join('');
 }
 
