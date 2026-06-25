@@ -1157,31 +1157,65 @@ document.getElementById('btnExport').addEventListener('click',()=>{
   toast('JSON esportato');
 });
 
-document.getElementById('importJson').addEventListener('change',function(){
-  const file=this.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
+document.getElementById('importJson').addEventListener('change', function(){
+  const file = this.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
     try {
-      const parsed=JSON.parse(e.target.result);
-      if(!parsed.movements||!parsed.categories) throw new Error('Formato non valido');
-      if(!confirm('Sostituire tutti i dati attuali con il file importato?')) return;
-      DATA=parsed;
-      if(!DATA.persone) DATA.persone=['Io'];
-      if(!DATA.conti) DATA.conti=[];
-      if(!DATA.currency) DATA.currency='EUR';
-      if(!DATA.language) DATA.language='it';
-      currentCurrency=DATA.currency;
-      currentLang=DATA.language;
-      document.getElementById('currencySelect').value=currentCurrency;
-      document.getElementById('setCurrencySelect').value=currentCurrency;
-      document.getElementById('setLangSelect').value=currentLang;
-      saveData();
-      renderAll();
-      toast('JSON importato');
-    } catch(err){ toast('Errore: '+err.message,true); }
+      const parsed = JSON.parse(e.target.result);
+      if(!parsed.movements || !parsed.categories) throw new Error('Formato non valido');
+      const nMov = (parsed.movements||[]).length;
+      if(!confirm(`Importare ${nMov} movimenti nel database?\nI duplicati verranno ignorati automaticamente.`)) return;
+
+      // Ripristina preferenze locali
+      if(parsed.currency){ applyCurrencyEverywhere(parsed.currency); markDirty(); }
+      if(parsed.language){ applyLang(parsed.language); markDirty(); }
+
+      // Set per deduplicazione movimenti (data+importo+desc+tipo)
+      const existingKeys = new Set(
+        DATA.movements.map(m => `${m.date}|${Number(m.amount).toFixed(2)}|${m.desc}|${m.type}`)
+      );
+      const validCatIds = new Set(DATA.categories.map(c => c.id));
+      const fallbackConto = DATA.conti[0]?.id || null;
+
+      let addedMov = 0, skippedMov = 0;
+      toast('Importazione in corso…');
+      for(const m of (parsed.movements || [])){
+        const key = `${m.date}|${Number(m.amount).toFixed(2)}|${m.desc}|${m.type}`;
+        if(existingKeys.has(key)){ skippedMov++; continue; }
+        const resolved = {
+          ...m,
+          conto: nameByContoId(m.conto, DATA.conti) ? m.conto : fallbackConto,
+          category: m.category && validCatIds.has(m.category) ? m.category : null,
+        };
+        try { await createMovementAPI(resolved, DATA.conti); addedMov++; }
+        catch(err){ skippedMov++; }
+      }
+
+      // Obiettivi (deduplicati per nome)
+      let addedGoals = 0;
+      for(const g of (parsed.goals || [])){
+        if(DATA.goals.find(x => x.name === g.name)) continue;
+        try { await createGoalAPI(g); addedGoals++; } catch(err){}
+      }
+
+      // Investimenti (deduplicati per ticker)
+      let addedInv = 0;
+      for(const inv of (parsed.investments || [])){
+        if(DATA.investments.find(x => x.ticker === inv.ticker)) continue;
+        try { await createInvestmentAPI(inv); addedInv++; } catch(err){}
+      }
+
+      await initFromServer();
+      const parts = [`${addedMov} movimenti`];
+      if(skippedMov > 0) parts.push(`${skippedMov} già presenti`);
+      if(addedGoals > 0) parts.push(`${addedGoals} obiettivi`);
+      if(addedInv > 0) parts.push(`${addedInv} investimenti`);
+      toast('Importati: ' + parts.join(' · '));
+    } catch(err){ toast('Errore importazione: ' + err.message, true); }
   };
   reader.readAsText(file);
-  this.value='';
+  this.value = '';
 });
 
 /* ====================================================
