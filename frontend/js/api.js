@@ -4,8 +4,10 @@
    esistente (DATA.categories / DATA.movements) già usa.
    Cambia API_BASE_URL per puntare al backend in produzione.
 ==================================================== */
-// API_BASE_URL e APP_PASSWORD sono definiti in js/config.js (gitignored)
-// Vedi js/config.example.js per il formato
+// API_BASE_URL e APP_PASSWORD vengono iniettati a runtime da /api/config
+// (Vercel serverless function che legge le variabili d'ambiente)
+let API_BASE_URL = "";
+let APP_PASSWORD = "";
 
 async function apiRequest(path, options = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {

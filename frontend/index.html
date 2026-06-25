@@ -944,7 +944,6 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 </div><!-- /shell -->
 
-<script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script>
 (function(){
@@ -2387,7 +2386,16 @@ async function initFromServer(){
   } catch(e){ toast('Errore caricamento investimenti: '+e.message,true); }
   renderAll();
 }
-initFromServer();
+(async () => {
+  try {
+    const cfg = await fetch('/api/config').then(r => r.json());
+    if (cfg.API_BASE_URL) API_BASE_URL = cfg.API_BASE_URL;
+    if (cfg.APP_PASSWORD) APP_PASSWORD = cfg.APP_PASSWORD;
+  } catch(e) {
+    // fallback locale: usa config.js se presente
+  }
+  initFromServer();
+})();
 
 window.addEventListener('beforeunload',e=>{
   if(DIRTY){e.preventDefault();e.returnValue='Modifiche non salvate. Uscire?';}
