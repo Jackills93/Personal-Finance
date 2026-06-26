@@ -432,9 +432,6 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== MOVIMENTI ==================== -->
 <section class="view" id="view-movimenti">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-    <button class="secondary" data-nav="storico" style="font-size:13px;">📋 Storico movimenti →</button>
-  </div>
   <div class="panel">
     <h2 id="movFormTitle">Nuovo movimento</h2>
     <div class="form-row">
@@ -491,7 +488,10 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
   </div>
   <div class="panel">
-    <h2>Storico movimenti</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h2 style="margin:0;">Movimenti</h2>
+      <button id="movViewToggle" class="ghost" style="font-size:12px;padding:6px 12px;">📅 Vista mensile</button>
+    </div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
       <input type="text" id="movSearch" placeholder="Cerca per descrizione, categoria, persona…">
@@ -512,11 +512,15 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <div class="field" style="flex:0 0 130px;"><label>Persona</label><select id="movFilterPersona"><option value="">Tutte</option></select></div>
       <div class="field" style="flex:0 0 auto;"><label>&nbsp;</label><button class="ghost" id="clearFilters">✕ Reset</button></div>
     </div>
+    <div id="movSummary" style="display:none;background:var(--panel-2);border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:13px;gap:20px;flex-wrap:wrap;align-items:center;"></div>
     <div id="movCount" style="font-size:12px;color:var(--ink-faint);margin-bottom:10px;"></div>
-    <table>
-      <thead><tr><th>Data</th><th>Descrizione</th><th>Categoria</th><th>Persona</th><th>Conto</th><th style="text-align:right;">Importo</th><th></th></tr></thead>
-      <tbody id="movTableBody"></tbody>
-    </table>
+    <div id="movListWrap">
+      <table>
+        <thead><tr><th>Data</th><th>Descrizione</th><th>Categoria</th><th>Persona</th><th>Conto</th><th style="text-align:right;">Importo</th><th></th></tr></thead>
+        <tbody id="movTableBody"></tbody>
+      </table>
+    </div>
+    <div id="movMonthlyWrap" style="display:none;"></div>
     <div class="empty" id="movEmpty" style="display:none;">Nessun movimento trovato.</div>
   </div>
 </section>
@@ -648,22 +652,6 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 </section>
 
 <!-- ==================== STORICO ==================== -->
-<section class="view" id="view-storico">
-  <div style="margin-bottom:12px;">
-    <button class="ghost" data-nav="movimenti" style="font-size:13px;">← Movimenti</button>
-  </div>
-  <div class="panel" style="margin-bottom:16px;">
-    <h2>Filtri storico</h2>
-    <div class="filter-bar">
-      <div class="field" style="flex:0 0 120px;"><label>Anno</label><select id="storicoYear"></select></div>
-      <div class="field" style="flex:0 0 130px;"><label>Mese (opz.)</label><select id="storicoMonth"><option value="">Tutti</option></select></div>
-      <div class="field" style="flex:0 0 130px;"><label>Persona</label><select id="storicoPersona"><option value="">Tutte</option></select></div>
-      <div class="field" style="flex:0 0 130px;"><label>Categoria</label><select id="storicoCat"><option value="">Tutte</option></select></div>
-    </div>
-  </div>
-  <div id="storicoContent"></div>
-</section>
-
 <!-- ==================== OBIETTIVI ==================== -->
 <section class="view" id="view-obiettivi">
   <div class="panel">
@@ -1227,7 +1215,6 @@ document.getElementById('importJson').addEventListener('change', function(){
    NAVIGAZIONE
 ==================================================== */
 const _subParent = {
-  storico:'movimenti',
   categorie:'impostazioni', conti:'impostazioni', persone:'impostazioni',
   ricorrenti:'impostazioni', bilancio:'impostazioni', archivio:'impostazioni',
 };
@@ -1241,7 +1228,6 @@ function navigateTo(viewId) {
   if(viewId==='categorie') renderCategories();
   if(viewId==='conti') renderConti();
   if(viewId==='ricorrenti') renderRecurring();
-  if(viewId==='storico') renderStorico();
   if(viewId==='persone') renderPersoneStats();
   if(viewId==='archivio') renderArchivio();
   if(viewId==='impostazioni') renderImpostazioni();
@@ -1891,44 +1877,110 @@ function getFilteredMovements(){
   }).sort((a,b)=>b.date.localeCompare(a.date));
 }
 
+let movViewMode = 'list';
+
+document.getElementById('movViewToggle').addEventListener('click', () => {
+  movViewMode = movViewMode === 'list' ? 'monthly' : 'list';
+  document.getElementById('movViewToggle').textContent =
+    movViewMode === 'list' ? '📅 Vista mensile' : '☰ Vista lista';
+  renderMovements();
+});
+
+function _movRowHTML(m) {
+  const df = new Date(m.date+'T00:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const isTransfer = m.type==='transfer';
+  const catBadge = isTransfer
+    ? `<span class="badge transfer">⇄ Giroconto</span>`
+    : m.category ? `<span class="badge">${escH(catNameById(m.category))}</span>`
+    : `<span class="badge" style="background:rgba(123,174,126,.15);color:var(--good);">${m.type==='income'?'Entrata':'—'}</span>`;
+  const amtClass = isTransfer?'transfer':m.type==='expense'?'exp':'inc';
+  const amtSign  = isTransfer?'⇄ ':m.type==='expense'?'−':'+';
+  const contoDisplay = isTransfer
+    ? `<span class="badge transfer">${escH(contoNameById(m.fromConto))} → ${escH(contoNameById(m.toConto))}</span>`
+    : m.conto ? `<span class="badge">${escH(contoNameById(m.conto))}</span>` : '<span style="color:var(--ink-faint);font-size:12px;">—</span>';
+  return `<tr>
+    <td class="mono" style="white-space:nowrap;">${df}</td>
+    <td>${escH(m.desc)}</td>
+    <td>${catBadge}</td>
+    <td>${m.persona?`<span class="badge persona">${escH(m.persona)}</span>`:'<span style="color:var(--ink-faint);font-size:12px;">—</span>'}</td>
+    <td>${contoDisplay}</td>
+    <td class="amt ${amtClass}">${amtSign}${fmtCur(m.amount)}</td>
+    <td style="white-space:nowrap;">
+      ${isTransfer?'':`<button class="icon-edit" data-edit="${m.id}" title="Modifica">✏</button>`}
+      <button class="icon-btn" data-del="${m.id}">✕</button>
+    </td></tr>`;
+}
+
+function _wireMovRows(container) {
+  container.querySelectorAll('[data-edit]').forEach(btn =>
+    btn.addEventListener('click', () => startEditMovement(btn.dataset.edit)));
+  container.querySelectorAll('[data-del]').forEach(btn =>
+    btn.addEventListener('click', () => deleteMovement(btn.dataset.del)));
+}
+
 function renderMovements(){
-  const tbody=document.getElementById('movTableBody');
-  tbody.innerHTML='';
-  const movs=getFilteredMovements();
-  document.getElementById('movCount').textContent=`${movs.length} ${movs.length!==1?'movimenti':'movimento'} ${movs.length!==1?'trovati':'trovato'}`;
-  document.getElementById('movEmpty').style.display=movs.length?'none':'block';
-  movs.forEach(m=>{
-    const df=new Date(m.date+'T00:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
-    const isTransfer=m.type==='transfer';
-    const tr=document.createElement('tr');
-    let catBadge=isTransfer
-      ?`<span class="badge transfer">⇄ Giroconto</span>`
-      :m.category?`<span class="badge">${escH(catNameById(m.category))}</span>`
-      :`<span class="badge" style="background:rgba(123,174,126,.15);color:var(--good);">${m.type==='income'?'Entrata':'—'}</span>`;
-    let amtClass=isTransfer?'transfer':m.type==='expense'?'exp':'inc';
-    let amtSign=isTransfer?'⇄ ':m.type==='expense'?'−':'+';
-    let contoDisplay=isTransfer
-      ?`<span class="badge transfer">${escH(contoNameById(m.fromConto))} → ${escH(contoNameById(m.toConto))}</span>`
-      :m.conto?`<span class="badge">${escH(contoNameById(m.conto))}</span>`:'<span style="color:var(--ink-faint);font-size:12px;">—</span>';
-    tr.innerHTML=`
-      <td class="mono" style="white-space:nowrap;">${df}</td>
-      <td>${escH(m.desc)}</td>
-      <td>${catBadge}</td>
-      <td>${m.persona?`<span class="badge persona">${escH(m.persona)}</span>`:'<span style="color:var(--ink-faint);font-size:12px;">—</span>'}</td>
-      <td>${contoDisplay}</td>
-      <td class="amt ${amtClass}">${amtSign}${fmtCur(m.amount)}</td>
-      <td style="white-space:nowrap;">
-        ${isTransfer?'':`<button class="icon-edit" data-edit="${m.id}" title="Modifica">✏</button>`}
-        <button class="icon-btn" data-del="${m.id}">✕</button>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-  tbody.querySelectorAll('[data-edit]').forEach(btn=>{
-    btn.addEventListener('click',()=>startEditMovement(btn.dataset.edit));
-  });
-  tbody.querySelectorAll('[data-del]').forEach(btn=>{
-    btn.addEventListener('click',()=>deleteMovement(btn.dataset.del));
-  });
+  const movs = getFilteredMovements();
+
+  // --- riepilogo totali ---
+  const summaryEl = document.getElementById('movSummary');
+  const entrate = movs.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+  const uscite  = movs.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+  const saldo   = entrate - uscite;
+  const parts = [];
+  if(entrate>0) parts.push(`<span style="color:var(--good);">+${fmtCur(entrate)} entrate</span>`);
+  if(uscite>0)  parts.push(`<span style="color:var(--bad);">−${fmtCur(uscite)} uscite</span>`);
+  if(entrate>0 && uscite>0) parts.push(`<span style="color:${saldo>=0?'var(--good)':'var(--bad)'};">saldo ${saldo>=0?'+':''}${fmtCur(saldo)}</span>`);
+  summaryEl.style.display = parts.length ? 'flex' : 'none';
+  summaryEl.innerHTML = parts.join('<span style="color:var(--ink-faint);">·</span>');
+
+  document.getElementById('movCount').textContent =
+    `${movs.length} ${movs.length!==1?'movimenti':'movimento'} ${movs.length!==1?'trovati':'trovato'}`;
+  document.getElementById('movEmpty').style.display = movs.length ? 'none' : 'block';
+
+  const listWrap    = document.getElementById('movListWrap');
+  const monthlyWrap = document.getElementById('movMonthlyWrap');
+
+  if(movViewMode === 'list'){
+    listWrap.style.display = '';
+    monthlyWrap.style.display = 'none';
+    const tbody = document.getElementById('movTableBody');
+    tbody.innerHTML = movs.map(_movRowHTML).join('');
+    _wireMovRows(tbody);
+  } else {
+    listWrap.style.display = 'none';
+    monthlyWrap.style.display = '';
+    monthlyWrap.innerHTML = '';
+    const byMonth = {};
+    movs.forEach(m => {
+      const k = m.date.slice(0,7);
+      if(!byMonth[k]) byMonth[k] = [];
+      byMonth[k].push(m);
+    });
+    Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(key => {
+      const list = byMonth[key];
+      const [y,mo] = key.split('-');
+      const label = new Date(+y,+mo-1,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+      const mEnt = list.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+      const mUsc = list.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+      const block = document.createElement('div');
+      block.className = 'panel';
+      block.style.marginBottom = '14px';
+      block.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h3 style="margin:0;font-size:14px;text-transform:capitalize;">${label}</h3>
+          <span style="font-size:12px;color:var(--ink-dim);">
+            <span style="color:var(--good);">+${fmtCur(mEnt)}</span> &nbsp;
+            <span style="color:var(--bad);">−${fmtCur(mUsc)}</span>
+          </span>
+        </div>
+        <table>
+          <thead><tr><th>Data</th><th>Descrizione</th><th>Categoria</th><th>Persona</th><th>Conto</th><th style="text-align:right;">Importo</th><th></th></tr></thead>
+          <tbody>${list.map(_movRowHTML).join('')}</tbody>
+        </table>`;
+      _wireMovRows(block);
+      monthlyWrap.appendChild(block);
+    });
+  }
 }
 
 ['movSearch','movFilterFrom','movFilterTo','movFilterType','movFilterCat','movFilterPersona'].forEach(id=>{
