@@ -1028,6 +1028,16 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="wizard-step" id="wizStep2">
       <h3>Categorie di spesa</h3>
       <p>Crea le categorie per classificare entrate e uscite. Puoi impostare un limite mensile opzionale.</p>
+      <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Hai un estratto conto in CSV?</div>
+        <div style="font-size:12px;color:var(--ink-dim);margin-bottom:10px;">Caricalo e il sistema suggerirà automaticamente le categorie in base alle transazioni trovate.</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <label class="secondary" style="cursor:pointer;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);padding:7px 14px;border-radius:6px;font-size:13px;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+            📄 Carica CSV<input type="file" accept=".csv,.txt" id="wizCsvInput" style="display:none;">
+          </label>
+          <span id="wizCsvStatus" style="font-size:12px;color:var(--ink-dim);">Nessun file selezionato</span>
+        </div>
+      </div>
       <div id="wizCatRows"></div>
       <button class="ghost" id="wizAddCatRow" style="font-size:13px;margin-top:4px;">+ Aggiungi categoria</button>
     </div>
@@ -2334,19 +2344,46 @@ function parseAmount(str){
 }
 
 const CAT_KEYWORDS={
-  'supermercato|coop|esselunga|lidl|aldi|conad|eurospin|spesa|alimentari|grocery':'cat_cibo',
-  'ristorante|trattoria|pizzeria|bar|caffè|caffetteria|delivery|deliveroo|just eat|uber eat':'cat_cibo',
-  'benzina|carburante|eni|agip|q8|tamoil|parking|parcheggio|autostrada|telepass|trenitalia|italo|atm|autobus|metro|taxi':'cat_trasp',
-  'enel|terna|gas|acqua|luce|bolletta|utenza|vodafone|tim|wind|fastweb|internet|telefono':'cat_casa',
-  'affitto|mutuo|condominio|manutenzione|ikea|leroy|brico':'cat_casa',
-  'cinema|teatro|netflix|spotify|amazon prime|disney|playstation|xbox|svago|concerto':'cat_svago',
-  'palestra|sport|fitness':'cat_svago'
+  'supermercato|coop|esselunga|lidl|aldi|conad|eurospin|spesa|alimentari|grocery':'cibo',
+  'ristorante|trattoria|pizzeria|bar|caffè|caffetteria|delivery|deliveroo|just eat|uber eat':'cibo',
+  'benzina|carburante|eni|agip|q8|tamoil|parking|parcheggio|autostrada|telepass|trenitalia|italo|atm|autobus|metro|taxi':'trasporti',
+  'enel|terna|gas|acqua|luce|bolletta|utenza|vodafone|tim|wind|fastweb|internet|telefono':'casa',
+  'affitto|mutuo|condominio|manutenzione|ikea|leroy|brico':'casa',
+  'cinema|teatro|netflix|spotify|amazon prime|disney|playstation|xbox|svago|concerto':'svago',
+  'palestra|sport|fitness':'svago'
 };
 
-function guessCategory(desc){
+// Alias per trovare la categoria per nome (matching flessibile)
+const TOPIC_NAME_ALIASES={
+  cibo:      ['cibo','spesa','aliment','food','ristoran','supermerc'],
+  trasporti: ['trasport','auto','viaggio','benzin','mobilit'],
+  casa:      ['casa','bollett','affitto','utenz','condomin','abitaz'],
+  svago:     ['svago','sport','fitness','hobby','intratteniment','entertain','divertim'],
+};
+
+const TOPIC_CAT_DEFAULTS={
+  cibo:      {name:'Spesa & Cibo',     color:'#F2C14E'},
+  trasporti: {name:'Trasporti',         color:'#7CA8E3'},
+  casa:      {name:'Casa & Bollette',   color:'#6FE3A0'},
+  svago:     {name:'Svago',             color:'#D9FF4D'},
+};
+
+function _topicForDesc(desc){
   const d=desc.toLowerCase();
-  for(const [keys,catId]of Object.entries(CAT_KEYWORDS)){
-    if(keys.split('|').some(p=>d.includes(p))&&DATA.categories.find(c=>c.id===catId))return catId;
+  for(const [keys,topic] of Object.entries(CAT_KEYWORDS)){
+    if(keys.split('|').some(p=>d.includes(p))) return topic;
+  }
+  return null;
+}
+
+function guessCategory(desc){
+  const topic=_topicForDesc(desc);
+  if(topic){
+    const aliases=TOPIC_NAME_ALIASES[topic]||[topic];
+    const cat=DATA.categories.find(c=>
+      c.type!=='income' && aliases.some(a=>c.name.toLowerCase().includes(a))
+    );
+    if(cat) return cat.id;
   }
   return DATA.categories.find(c=>c.type!=='income')?.id||'';
 }
@@ -3714,6 +3751,57 @@ document.getElementById('wizAddCatRow').addEventListener('click', () =>
   document.getElementById('wizCatRows').appendChild(_wizMakeCatRow()));
 document.getElementById('wizAddPersonaRow').addEventListener('click', () =>
   document.getElementById('wizPersoneRows').appendChild(_wizMakePersonaRow()));
+
+document.getElementById('wizCsvInput').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+    if (!lines.length) return;
+    const sep = detectSeparator(lines[0]);
+    const foundTopics = new Set();
+    lines.forEach(line => {
+      const parts = line.split(sep).map(p => p.trim().replace(/^"|"$/g, ''));
+      if (parts.length < 2) return;
+      // Raccoglie tutte le parti che sembrano descrizioni (non data, non importo)
+      parts.forEach(p => {
+        if (!parseDate(p) && isNaN(parseAmount(p)) && p.length > 2) {
+          const topic = _topicForDesc(p);
+          if (topic) foundTopics.add(topic);
+        }
+      });
+    });
+
+    const catRows = document.getElementById('wizCatRows');
+    const statusEl = document.getElementById('wizCsvStatus');
+
+    if (foundTopics.size === 0) {
+      statusEl.textContent = 'Nessuna categoria rilevata — aggiungi manualmente.';
+      statusEl.style.color = 'var(--ink-dim)';
+      if (!catRows.children.length) catRows.appendChild(_wizMakeCatRow());
+      return;
+    }
+
+    // Rimuove righe vuote già presenti, aggiunge una riga per ogni topic trovato
+    // (evita duplicati se l'utente ricarica un altro file)
+    const existingNames = new Set(
+      [...catRows.querySelectorAll('.wiz-cat-name')].map(i => i.value.trim().toLowerCase())
+    );
+    foundTopics.forEach(topic => {
+      const def = TOPIC_CAT_DEFAULTS[topic];
+      if (!def) return;
+      if (existingNames.has(def.name.toLowerCase())) return;
+      catRows.appendChild(_wizMakeCatRow(def.name, 'expense', def.color, ''));
+    });
+
+    statusEl.textContent = `${file.name} — ${foundTopics.size} categorie suggerite`;
+    statusEl.style.color = 'var(--good)';
+  };
+  reader.readAsText(file);
+  this.value = '';
+});
 
 </script>
 </body>
