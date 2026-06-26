@@ -379,7 +379,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <button data-view="obiettivi">Obiettivi</button>
   <button data-view="persone">Persone</button>
   <button data-view="investimenti">Investimenti</button>
-  <button data-view="importa">Importa Estratto</button>
+
   <button data-view="bilancio">Bilancio</button>
   <button data-view="archivio">Archivio</button>
   <button data-view="impostazioni">Impostazioni</button>
@@ -691,47 +691,6 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 </section>
 
-<!-- ==================== IMPORTA ==================== -->
-<section class="view" id="view-importa">
-  <div class="panel">
-    <h2>Importa estratto conto <small>Supporta CSV bancari (Fineco, UniCredit, ING, formato generico) e testo incollato</small></h2>
-    <div class="drop-zone" id="dropZone">
-      <div class="dz-icon">📄</div>
-      <div class="dz-text">Trascina un file CSV qui oppure clicca per selezionarlo</div>
-      <div class="dz-sub">Formati: CSV con colonne data, descrizione, importo · Il sistema rileva automaticamente il separatore</div>
-      <input type="file" accept=".csv,.txt" id="importCsv">
-    </div>
-    <div style="margin-top:14px;">
-      <div class="field" style="max-width:100%;">
-        <label>Oppure incolla il testo dell'estratto conto</label>
-        <textarea id="importPasteArea" placeholder="Incolla righe CSV — es:&#10;01/06/2025;Supermercato Coop;-45.30&#10;03/06/2025;Stipendio;+1800.00"></textarea>
-      </div>
-      <div class="form-row" style="margin-top:10px;">
-        <div class="field" style="flex:0 0 140px;"><label>Assegna a persona</label><select id="importPersona"></select></div>
-        <div class="field" style="flex:0 0 140px;"><label>Conto destinazione</label><select id="importConto"></select></div>
-        <div class="field" style="flex:0 0 auto;"><label>&nbsp;</label><button class="primary" id="parseImportBtn">Analizza</button></div>
-      </div>
-    </div>
-  </div>
-  <div id="importPreview"></div>
-  <div id="importActions" style="display:none;margin-top:12px;">
-    <div class="form-row">
-      <button class="primary" id="confirmImportBtn">✔ Importa selezionati</button>
-      <button class="ghost" id="selectAllImport">Seleziona tutti</button>
-      <button class="ghost" id="deselectAllImport">Deseleziona tutti</button>
-    </div>
-  </div>
-  <div class="panel" style="margin-top:16px;">
-    <h2>Importa / Esporta dati app <small>Backup completo in formato JSON</small></h2>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <label class="secondary" style="cursor:pointer;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);padding:9px 16px;border-radius:6px;font-size:13px;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
-        ⬆ Importa JSON<input type="file" accept=".json" id="importJson" style="display:none;">
-      </label>
-      <button id="btnExport" class="secondary">⬇ Esporta JSON</button>
-      <span style="font-size:12px;color:var(--ink-faint);">Ripristina o trasferisci tutti i dati dell'app</span>
-    </div>
-  </div>
-</section>
 
 <!-- ==================== INVESTIMENTI ==================== -->
 <section class="view" id="view-investimenti">
@@ -880,6 +839,46 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== IMPOSTAZIONI ==================== -->
 <section class="view" id="view-impostazioni">
   <div class="panel">
+    <h2>Importa estratto conto <small>Supporta CSV bancari (Fineco, UniCredit, ING, formato generico) e testo incollato</small></h2>
+    <div class="drop-zone" id="dropZone">
+      <div class="dz-icon">📄</div>
+      <div class="dz-text">Trascina un file CSV qui oppure clicca per selezionarlo</div>
+      <div class="dz-sub">Formati: CSV con colonne data, descrizione, importo · Il sistema rileva automaticamente il separatore</div>
+      <input type="file" accept=".csv,.txt" id="importCsv">
+    </div>
+    <div style="margin-top:14px;">
+      <div class="field" style="max-width:100%;">
+        <label>Oppure incolla il testo dell'estratto conto</label>
+        <textarea id="importPasteArea" placeholder="Incolla righe CSV — es:&#10;01/06/2025;Supermercato Coop;-45.30&#10;03/06/2025;Stipendio;+1800.00"></textarea>
+      </div>
+      <div class="form-row" style="margin-top:10px;">
+        <div class="field" style="flex:0 0 140px;"><label>Assegna a persona</label><select id="importPersona"></select></div>
+        <div class="field" style="flex:0 0 140px;"><label>Conto destinazione</label><select id="importConto"></select></div>
+        <div class="field" style="flex:0 0 auto;"><label>&nbsp;</label><button class="primary" id="parseImportBtn">Analizza</button></div>
+      </div>
+    </div>
+  </div>
+  <div id="importPreview"></div>
+  <div id="importActions" style="display:none;margin-top:12px;">
+    <div class="form-row">
+      <button class="primary" id="confirmImportBtn">✔ Importa selezionati</button>
+      <button class="ghost" id="selectAllImport">Seleziona tutti</button>
+      <button class="ghost" id="deselectAllImport">Deseleziona tutti</button>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;">
+    <h2>Backup dati <small>Esporta o importa tutti i dati dell'app in formato JSON</small></h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <label class="secondary" style="cursor:pointer;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);padding:9px 16px;border-radius:6px;font-size:13px;font-family:inherit;display:inline-flex;align-items:center;gap:6px;">
+        ⬆ Importa JSON<input type="file" accept=".json" id="importJson" style="display:none;">
+      </label>
+      <button id="btnExport" class="secondary">⬇ Esporta JSON</button>
+      <span style="font-size:12px;color:var(--ink-faint);">Ripristina o trasferisci tutti i dati dell'app</span>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;">
     <h2>Configurazione Telegram</h2>
     <p style="color:var(--ink-dim);font-size:13px;margin:0 0 20px;">
       Configura il bot Telegram per ricevere notifiche e registrare spese via messaggio.
