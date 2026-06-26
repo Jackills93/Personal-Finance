@@ -1045,7 +1045,7 @@ function fmtCur(n){
   const cur = currentCurrency;
   const info = CURRENCIES[cur]||CURRENCIES['EUR'];
   try {
-    return v.toLocaleString(info.locale,{style:'currency',currency:cur,maximumFractionDigits:cur==='JPY'||cur==='HUF'?0:2});
+    return v.toLocaleString(info.locale,{style:'currency',currency:cur,minimumFractionDigits:cur==='JPY'||cur==='HUF'?0:2,maximumFractionDigits:cur==='JPY'||cur==='HUF'?0:2,useGrouping:true});
   } catch(e) {
     return info.symbol + v.toFixed(cur==='JPY'||cur==='HUF'?0:2);
   }
@@ -1053,7 +1053,7 @@ function fmtCur(n){
 
 function fmtNum(n, decimals = 2) {
   const locale = currentLang === 'en' ? 'en-US' : 'it-IT';
-  return Number(n).toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: decimals });
+  return Number(n).toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: decimals, useGrouping: true });
 }
 
 function setCurrencyLabels(){
@@ -1888,7 +1888,7 @@ function renderMovements(){
   const tbody=document.getElementById('movTableBody');
   tbody.innerHTML='';
   const movs=getFilteredMovements();
-  document.getElementById('movCount').textContent=`${movs.length} movimento${movs.length!==1?'i':''} trovato${movs.length!==1?'i':''}`;
+  document.getElementById('movCount').textContent=`${movs.length} ${movs.length!==1?'movimenti':'movimento'} ${movs.length!==1?'trovati':'trovato'}`;
   document.getElementById('movEmpty').style.display=movs.length?'none':'block';
   movs.forEach(m=>{
     const df=new Date(m.date+'T00:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -2354,7 +2354,7 @@ function renderDashboard(filterPersona=''){
   document.getElementById('kpiBudgetSub').textContent=totalLimit>0?`su ${fmtCur(totalLimit)}`:'Nessun limite';
   const totConti=DATA.conti.reduce((s,c)=>s+contoSaldoEffettivo(c.id),0);
   document.getElementById('kpiConti').textContent=fmtCur(totConti);
-  document.getElementById('kpiContiSub').textContent=`${DATA.conti.length} conto${DATA.conti.length!==1?'i':''}`;
+  document.getElementById('kpiContiSub').textContent=`${DATA.conti.length} ${DATA.conti.length!==1?'conti':'conto'}`;
   renderCatBars(filterPersona);
   renderBalanceChart(filterPersona);
   renderDashPieChart(filterPersona);
