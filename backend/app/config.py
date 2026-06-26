@@ -6,9 +6,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5500,http://127.0.0.1:5500"
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: str | None = None
-    TELEGRAM_CHAT_ID_NAME: str = "Pietro"
+    TELEGRAM_CHAT_ID_NAME: str = ""
     TELEGRAM_CHAT_ID_GRETA: str | None = None
-    TELEGRAM_CHAT_ID_GRETA_NAME: str = "Greta"
+    TELEGRAM_CHAT_ID_GRETA_NAME: str = ""
     APP_PASSWORD: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

@@ -1102,17 +1102,12 @@ function loadData(){
   } catch(e){}
   return {
     currency:'EUR',
-    categories:[
-      {id:'cat_casa',  name:'Casa & Bollette',color:'#6FE3A0',limit:600},
-      {id:'cat_cibo',  name:'Spesa & Cibo',   color:'#F2C14E',limit:350},
-      {id:'cat_trasp', name:'Trasporti',       color:'#7CA8E3',limit:120},
-      {id:'cat_svago', name:'Svago',           color:'#D9FF4D',limit:150}
-    ],
+    categories:[],
     movements:[],
     goals:[],
     investments:[],
-    persone:['Io'],
-    conti:[{id:'conto_default',name:'Conto Principale',type:'corrente',saldo:0,color:'#6FE3A0'}],
+    persone:[],
+    conti:[],
     recurring:[]
   };
 }

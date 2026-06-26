@@ -80,7 +80,7 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
     if parsed is None:
         send_telegram_message(
             'Non ho capito l\'importo. Scrivi ad esempio: "25.50 Spesa supermercato #Alimentari #Conto Principale" '
-            'per una uscita, o "+1200 Stipendio #Stipendio Pietro" per una entrata '
+            'per una uscita, o "+1200 Stipendio #Entrate #Conto Principale" per una entrata '
             "(categoria e conto sono facoltativi, la persona viene rilevata automaticamente).",
             chat_id=chat_id,
         )
