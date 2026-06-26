@@ -433,7 +433,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== MOVIMENTI ==================== -->
 <section class="view" id="view-movimenti">
   <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-    <button class="secondary" onclick="navigateTo('storico')" style="font-size:13px;">📋 Storico movimenti →</button>
+    <button class="secondary" data-nav="storico" style="font-size:13px;">📋 Storico movimenti →</button>
   </div>
   <div class="panel">
     <h2 id="movFormTitle">Nuovo movimento</h2>
@@ -524,7 +524,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== CATEGORIE ==================== -->
 <section class="view" id="view-categorie">
   <div style="margin-bottom:12px;">
-    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+    <button class="ghost" data-nav="impostazioni" style="font-size:13px;">← Impostazioni</button>
   </div>
   <div class="panel">
     <h2>Nuova categoria</h2>
@@ -552,7 +552,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== RICORRENTI ==================== -->
 <section class="view" id="view-ricorrenti">
   <div style="margin-bottom:12px;">
-    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+    <button class="ghost" data-nav="impostazioni" style="font-size:13px;">← Impostazioni</button>
   </div>
   <div class="panel">
     <h2>Nuova spesa/entrata ricorrente <small>Es. mutuo, abbonamenti — generata in automatico ogni mese all'apertura dell'app</small></h2>
@@ -585,7 +585,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== CONTI ==================== -->
 <section class="view" id="view-conti">
   <div style="margin-bottom:12px;">
-    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+    <button class="ghost" data-nav="impostazioni" style="font-size:13px;">← Impostazioni</button>
   </div>
   <div class="conti-summary" id="contiSummary"></div>
 
@@ -650,7 +650,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== STORICO ==================== -->
 <section class="view" id="view-storico">
   <div style="margin-bottom:12px;">
-    <button class="ghost" onclick="navigateTo('movimenti')" style="font-size:13px;">← Movimenti</button>
+    <button class="ghost" data-nav="movimenti" style="font-size:13px;">← Movimenti</button>
   </div>
   <div class="panel" style="margin-bottom:16px;">
     <h2>Filtri storico</h2>
@@ -683,7 +683,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== PERSONE ==================== -->
 <section class="view" id="view-persone">
   <div style="margin-bottom:12px;">
-    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+    <button class="ghost" data-nav="impostazioni" style="font-size:13px;">← Impostazioni</button>
   </div>
   <div class="panel">
     <h2>Gestione persone <small>Associa movimenti a persone per filtrare le spese</small></h2>
@@ -776,7 +776,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== BILANCIO ==================== -->
 <section class="view" id="view-bilancio">
   <div style="margin-bottom:12px;">
-    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+    <button class="ghost" data-nav="impostazioni" style="font-size:13px;">← Impostazioni</button>
   </div>
   <div class="bil-export-row">
     <h2>Bilancio Personale</h2>
@@ -839,7 +839,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== ARCHIVIO ==================== -->
 <section class="view" id="view-archivio">
   <div style="margin-bottom:12px;">
-    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+    <button class="ghost" data-nav="impostazioni" style="font-size:13px;">← Impostazioni</button>
   </div>
   <div class="panel">
     <h2>Archivio anni</h2>
@@ -855,12 +855,12 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <!-- ==================== IMPOSTAZIONI ==================== -->
 <section class="view" id="view-impostazioni">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
-    <button class="secondary" onclick="navigateTo('categorie')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📂<span>Categorie</span></button>
-    <button class="secondary" onclick="navigateTo('conti')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">🏦<span>Conti</span></button>
-    <button class="secondary" onclick="navigateTo('persone')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">👥<span>Persone</span></button>
-    <button class="secondary" onclick="navigateTo('ricorrenti')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">🔄<span>Ricorrenti</span></button>
-    <button class="secondary" onclick="navigateTo('bilancio')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📊<span>Bilancio</span></button>
-    <button class="secondary" onclick="navigateTo('archivio')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📁<span>Archivio</span></button>
+    <button class="secondary" data-nav="categorie" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📂<span>Categorie</span></button>
+    <button class="secondary" data-nav="conti" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">🏦<span>Conti</span></button>
+    <button class="secondary" data-nav="persone" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">👥<span>Persone</span></button>
+    <button class="secondary" data-nav="ricorrenti" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">🔄<span>Ricorrenti</span></button>
+    <button class="secondary" data-nav="bilancio" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📊<span>Bilancio</span></button>
+    <button class="secondary" data-nav="archivio" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📁<span>Archivio</span></button>
   </div>
 
   <div class="panel">
@@ -1005,7 +1005,6 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <script src="js/api.js"></script>
 <script>
-(function(){
 "use strict";
 
 /* ====================================================
@@ -1239,12 +1238,20 @@ function navigateTo(viewId) {
   document.getElementById('view-'+viewId).classList.add('active');
   const parentTab = _subParent[viewId] || viewId;
   document.querySelector(`[data-view="${parentTab}"]`)?.classList.add('active');
+  if(viewId==='categorie') renderCategories();
+  if(viewId==='conti') renderConti();
+  if(viewId==='ricorrenti') renderRecurring();
   if(viewId==='storico') renderStorico();
   if(viewId==='persone') renderPersoneStats();
   if(viewId==='archivio') renderArchivio();
   if(viewId==='impostazioni') renderImpostazioni();
   if(viewId==='bilancio') _renderBilancioNav();
 }
+
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-nav]');
+  if (btn) navigateTo(btn.dataset.nav);
+});
 
 function _renderBilancioNav() {
   const sel = document.getElementById('bilPersona');
@@ -3473,7 +3480,6 @@ document.getElementById('setAppSave').addEventListener('click', async () => {
 
 document.querySelector('[data-view="impostazioni"]').addEventListener('click', renderImpostazioni);
 
-})();
 </script>
 </body>
 </html>
