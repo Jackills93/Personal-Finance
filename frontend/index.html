@@ -151,6 +151,23 @@ table td.amt.transfer{color:var(--info);}
 .modal-box .field{margin-bottom:12px;}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
 
+/* WIZARD ONBOARDING */
+.wizard-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.wizard-overlay.hidden{display:none;}
+.wizard-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:28px;width:580px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow);}
+.wizard-box h2{font-size:16px;font-weight:700;margin:0 0 18px;}
+.wizard-stepper{display:flex;margin-bottom:24px;}
+.wizard-stepper .ws{flex:1;text-align:center;font-size:12px;padding:8px 4px;color:var(--ink-faint);border-bottom:2px solid var(--line);transition:color .2s,border-color .2s;}
+.wizard-stepper .ws.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+.wizard-stepper .ws.done{color:var(--good);border-bottom-color:var(--good);}
+.wizard-step{display:none;}
+.wizard-step.active{display:block;}
+.wizard-step h3{font-size:14px;font-weight:600;margin:0 0 4px;}
+.wizard-step p{font-size:13px;color:var(--ink-dim);margin:0 0 14px;}
+.wiz-item{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.wiz-item input,.wiz-item select{height:36px;font-size:13px;}
+.wizard-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
+
 /* GIROCONTO */
 .giroconto-card{background:var(--panel-2);border:1px solid var(--accent-dim);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow);}
 .giroconto-card h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin:0 0 14px;}
@@ -990,6 +1007,45 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 </section>
 
 </div><!-- /shell -->
+
+<!-- ==================== WIZARD ONBOARDING ==================== -->
+<div class="wizard-overlay hidden" id="wizardOverlay">
+  <div class="wizard-box">
+    <h2>Benvenuto! Configuriamo l'app in 3 passi</h2>
+    <div class="wizard-stepper">
+      <div class="ws active" id="ws1">1 · Conti</div>
+      <div class="ws" id="ws2">2 · Categorie</div>
+      <div class="ws" id="ws3">3 · Persone</div>
+    </div>
+
+    <div class="wizard-step active" id="wizStep1">
+      <h3>I tuoi conti</h3>
+      <p>Aggiungi almeno un conto (es. Conto corrente, Carta prepagata). Puoi modificarli in seguito.</p>
+      <div id="wizContiRows"></div>
+      <button class="ghost" id="wizAddContoRow" style="font-size:13px;margin-top:4px;">+ Aggiungi conto</button>
+    </div>
+
+    <div class="wizard-step" id="wizStep2">
+      <h3>Categorie di spesa</h3>
+      <p>Crea le categorie per classificare entrate e uscite. Puoi impostare un limite mensile opzionale.</p>
+      <div id="wizCatRows"></div>
+      <button class="ghost" id="wizAddCatRow" style="font-size:13px;margin-top:4px;">+ Aggiungi categoria</button>
+    </div>
+
+    <div class="wizard-step" id="wizStep3">
+      <h3>Chi usa l'app?</h3>
+      <p>Inserisci i nomi delle persone che registrano movimenti. Puoi aggiungerne altri in seguito dalle Impostazioni.</p>
+      <div id="wizPersoneRows"></div>
+      <button class="ghost" id="wizAddPersonaRow" style="font-size:13px;margin-top:4px;">+ Aggiungi persona</button>
+    </div>
+
+    <div class="wizard-footer">
+      <button class="ghost" id="wizBack" style="display:none;">← Indietro</button>
+      <button class="ghost" id="wizSkip">Salta</button>
+      <button class="primary" id="wizNext">Avanti →</button>
+    </div>
+  </div>
+</div>
 
 <script src="js/api.js"></script>
 <script>
@@ -2589,6 +2645,7 @@ async function initFromServer(){
     DATA.investments=await loadInvestmentsFromAPI();
   } catch(e){ toast('Errore caricamento investimenti: '+e.message,true); }
   renderAll();
+  if(DATA.categories.length === 0 && DATA.conti.length === 0) showWizard();
 }
 (async () => {
   try {
@@ -3526,6 +3583,137 @@ document.getElementById('setAppSave').addEventListener('click', async () => {
 });
 
 document.querySelector('[data-view="impostazioni"]').addEventListener('click', renderImpostazioni);
+
+/* ====================================================
+   WIZARD ONBOARDING
+==================================================== */
+let _wizStep = 1;
+
+function _wizMakeContoRow(name='', type='corrente', saldo='0', color='#6FE3A0') {
+  const row = document.createElement('div');
+  row.className = 'wiz-item';
+  row.innerHTML = `
+    <input type="text" placeholder="Nome conto" value="${escH(name)}" style="flex:2;min-width:120px;" class="wiz-conto-name">
+    <select class="wiz-conto-type" style="flex:1;min-width:110px;">
+      <option value="corrente" ${type==='corrente'?'selected':''}>Corrente</option>
+      <option value="risparmio" ${type==='risparmio'?'selected':''}>Risparmio</option>
+      <option value="contanti" ${type==='contanti'?'selected':''}>Contanti</option>
+      <option value="investimento" ${type==='investimento'?'selected':''}>Investimento</option>
+      <option value="altro" ${type==='altro'?'selected':''}>Altro</option>
+    </select>
+    <input type="number" placeholder="Saldo iniziale" value="${saldo}" step="0.01" style="flex:1;min-width:100px;" class="wiz-conto-saldo">
+    <input type="color" value="${color}" style="width:36px;height:36px;padding:2px;border:none;background:none;cursor:pointer;" class="wiz-conto-color" title="Colore">
+    <button class="icon-btn wiz-remove" title="Rimuovi">✕</button>`;
+  row.querySelector('.wiz-remove').addEventListener('click', () => row.remove());
+  return row;
+}
+
+function _wizMakeCatRow(name='', type='expense', color='#7CA8E3', limit='') {
+  const row = document.createElement('div');
+  row.className = 'wiz-item';
+  row.innerHTML = `
+    <input type="text" placeholder="Nome categoria" value="${escH(name)}" style="flex:2;min-width:120px;" class="wiz-cat-name">
+    <select class="wiz-cat-type" style="flex:1;min-width:100px;">
+      <option value="expense" ${type==='expense'?'selected':''}>Uscita</option>
+      <option value="income" ${type==='income'?'selected':''}>Entrata</option>
+    </select>
+    <input type="number" placeholder="Limite €" value="${escH(String(limit))}" step="0.01" min="0" style="flex:1;min-width:90px;" class="wiz-cat-limit" title="Limite mensile (opzionale)">
+    <input type="color" value="${color}" style="width:36px;height:36px;padding:2px;border:none;background:none;cursor:pointer;" class="wiz-cat-color" title="Colore">
+    <button class="icon-btn wiz-remove" title="Rimuovi">✕</button>`;
+  row.querySelector('.wiz-remove').addEventListener('click', () => row.remove());
+  return row;
+}
+
+function _wizMakePersonaRow(name='') {
+  const row = document.createElement('div');
+  row.className = 'wiz-item';
+  row.innerHTML = `
+    <input type="text" placeholder="Nome persona" value="${escH(name)}" style="flex:1;" class="wiz-persona-name">
+    <button class="icon-btn wiz-remove" title="Rimuovi">✕</button>`;
+  row.querySelector('.wiz-remove').addEventListener('click', () => row.remove());
+  return row;
+}
+
+function _wizUpdateUI() {
+  for(let i = 1; i <= 3; i++) {
+    document.getElementById(`wizStep${i}`).classList.toggle('active', i === _wizStep);
+    const ws = document.getElementById(`ws${i}`);
+    ws.classList.toggle('active', i === _wizStep);
+    ws.classList.toggle('done', i < _wizStep);
+  }
+  document.getElementById('wizBack').style.display = _wizStep > 1 ? '' : 'none';
+  document.getElementById('wizNext').textContent = _wizStep === 3 ? '✔ Completa' : 'Avanti →';
+}
+
+function showWizard() {
+  const contiRows = document.getElementById('wizContiRows');
+  if (!contiRows.children.length) contiRows.appendChild(_wizMakeContoRow());
+  _wizStep = 1;
+  _wizUpdateUI();
+  document.getElementById('wizardOverlay').classList.remove('hidden');
+}
+
+async function _wizComplete() {
+  const btn = document.getElementById('wizNext');
+  btn.disabled = true;
+  btn.textContent = 'Salvataggio…';
+  try {
+    for(const row of document.getElementById('wizContiRows').querySelectorAll('.wiz-item')) {
+      const name = row.querySelector('.wiz-conto-name').value.trim();
+      if(!name) continue;
+      const type  = row.querySelector('.wiz-conto-type').value;
+      const saldo = parseFloat(row.querySelector('.wiz-conto-saldo').value) || 0;
+      const color = row.querySelector('.wiz-conto-color').value;
+      try { const c = await createAccountAPI({name,type,saldo,color}); DATA.conti.push(c); } catch(e){}
+    }
+    for(const row of document.getElementById('wizCatRows').querySelectorAll('.wiz-item')) {
+      const name = row.querySelector('.wiz-cat-name').value.trim();
+      if(!name) continue;
+      const type  = row.querySelector('.wiz-cat-type').value;
+      const limit = parseFloat(row.querySelector('.wiz-cat-limit').value) || null;
+      const color = row.querySelector('.wiz-cat-color').value;
+      try { const c = await createCategoryAPI({name,type,color,limit}); DATA.categories.push(c); } catch(e){}
+    }
+    for(const row of document.getElementById('wizPersoneRows').querySelectorAll('.wiz-item')) {
+      const name = row.querySelector('.wiz-persona-name').value.trim();
+      if(!name) continue;
+      try { await createPersonAPI(name); DATA.persone.push(name); } catch(e){}
+    }
+    document.getElementById('wizardOverlay').classList.add('hidden');
+    renderAll();
+    toast('Configurazione completata!');
+  } catch(e) {
+    toast('Errore durante il salvataggio: ' + e.message, true);
+    btn.disabled = false;
+    btn.textContent = '✔ Completa';
+  }
+}
+
+document.getElementById('wizNext').addEventListener('click', () => {
+  if(_wizStep < 3) {
+    _wizStep++;
+    if(_wizStep === 2 && !document.getElementById('wizCatRows').children.length)
+      document.getElementById('wizCatRows').appendChild(_wizMakeCatRow());
+    if(_wizStep === 3 && !document.getElementById('wizPersoneRows').children.length)
+      document.getElementById('wizPersoneRows').appendChild(_wizMakePersonaRow());
+    _wizUpdateUI();
+  } else {
+    _wizComplete();
+  }
+});
+document.getElementById('wizBack').addEventListener('click', () => {
+  if(_wizStep > 1) { _wizStep--; _wizUpdateUI(); }
+});
+document.getElementById('wizSkip').addEventListener('click', () => {
+  if(_wizStep < 3) { _wizStep++; _wizUpdateUI(); }
+  else document.getElementById('wizardOverlay').classList.add('hidden');
+});
+document.getElementById('wizAddContoRow').addEventListener('click', () =>
+  document.getElementById('wizContiRows').appendChild(_wizMakeContoRow()));
+document.getElementById('wizAddCatRow').addEventListener('click', () =>
+  document.getElementById('wizCatRows').appendChild(_wizMakeCatRow()));
+document.getElementById('wizAddPersonaRow').addEventListener('click', () =>
+  document.getElementById('wizPersoneRows').appendChild(_wizMakePersonaRow()));
 
 </script>
 </body>
