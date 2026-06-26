@@ -372,16 +372,8 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <nav class="tabs">
   <button data-view="dashboard" class="active">Dashboard</button>
   <button data-view="movimenti">Movimenti</button>
-  <button data-view="categorie">Categorie</button>
-  <button data-view="ricorrenti">Ricorrenti</button>
-  <button data-view="conti">Conti</button>
-  <button data-view="storico">Storico</button>
   <button data-view="obiettivi">Obiettivi</button>
-  <button data-view="persone">Persone</button>
   <button data-view="investimenti">Investimenti</button>
-
-  <button data-view="bilancio">Bilancio</button>
-  <button data-view="archivio">Archivio</button>
   <button data-view="impostazioni">Impostazioni</button>
 </nav>
 
@@ -440,6 +432,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== MOVIMENTI ==================== -->
 <section class="view" id="view-movimenti">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+    <button class="secondary" onclick="navigateTo('storico')" style="font-size:13px;">📋 Storico movimenti →</button>
+  </div>
   <div class="panel">
     <h2 id="movFormTitle">Nuovo movimento</h2>
     <div class="form-row">
@@ -528,6 +523,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== CATEGORIE ==================== -->
 <section class="view" id="view-categorie">
+  <div style="margin-bottom:12px;">
+    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+  </div>
   <div class="panel">
     <h2>Nuova categoria</h2>
     <div class="form-row">
@@ -553,6 +551,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== RICORRENTI ==================== -->
 <section class="view" id="view-ricorrenti">
+  <div style="margin-bottom:12px;">
+    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+  </div>
   <div class="panel">
     <h2>Nuova spesa/entrata ricorrente <small>Es. mutuo, abbonamenti — generata in automatico ogni mese all'apertura dell'app</small></h2>
     <div class="form-row">
@@ -583,6 +584,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== CONTI ==================== -->
 <section class="view" id="view-conti">
+  <div style="margin-bottom:12px;">
+    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+  </div>
   <div class="conti-summary" id="contiSummary"></div>
 
   <!-- GIROCONTO -->
@@ -645,6 +649,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== STORICO ==================== -->
 <section class="view" id="view-storico">
+  <div style="margin-bottom:12px;">
+    <button class="ghost" onclick="navigateTo('movimenti')" style="font-size:13px;">← Movimenti</button>
+  </div>
   <div class="panel" style="margin-bottom:16px;">
     <h2>Filtri storico</h2>
     <div class="filter-bar">
@@ -675,6 +682,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== PERSONE ==================== -->
 <section class="view" id="view-persone">
+  <div style="margin-bottom:12px;">
+    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+  </div>
   <div class="panel">
     <h2>Gestione persone <small>Associa movimenti a persone per filtrare le spese</small></h2>
     <div class="form-row">
@@ -765,6 +775,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== BILANCIO ==================== -->
 <section class="view" id="view-bilancio">
+  <div style="margin-bottom:12px;">
+    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+  </div>
   <div class="bil-export-row">
     <h2>Bilancio Personale</h2>
     <button class="secondary" id="bilExportPdf" style="display:flex;align-items:center;gap:6px;">⬇ Esporta PDF</button>
@@ -825,6 +838,9 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== ARCHIVIO ==================== -->
 <section class="view" id="view-archivio">
+  <div style="margin-bottom:12px;">
+    <button class="ghost" onclick="navigateTo('impostazioni')" style="font-size:13px;">← Impostazioni</button>
+  </div>
   <div class="panel">
     <h2>Archivio anni</h2>
     <p style="color:var(--ink-dim);font-size:13px;margin:0 0 16px;">
@@ -838,6 +854,15 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- ==================== IMPOSTAZIONI ==================== -->
 <section class="view" id="view-impostazioni">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+    <button class="secondary" onclick="navigateTo('categorie')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📂<span>Categorie</span></button>
+    <button class="secondary" onclick="navigateTo('conti')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">🏦<span>Conti</span></button>
+    <button class="secondary" onclick="navigateTo('persone')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">👥<span>Persone</span></button>
+    <button class="secondary" onclick="navigateTo('ricorrenti')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">🔄<span>Ricorrenti</span></button>
+    <button class="secondary" onclick="navigateTo('bilancio')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📊<span>Bilancio</span></button>
+    <button class="secondary" onclick="navigateTo('archivio')" style="padding:14px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;">📁<span>Archivio</span></button>
+  </div>
+
   <div class="panel">
     <h2>Importa estratto conto <small>Supporta CSV bancari (Fineco, UniCredit, ING, formato generico) e testo incollato</small></h2>
     <div class="drop-zone" id="dropZone">
@@ -1198,6 +1223,41 @@ document.getElementById('importJson').addEventListener('change', function(){
   reader.readAsText(file);
   this.value = '';
 });
+
+/* ====================================================
+   NAVIGAZIONE
+==================================================== */
+const _subParent = {
+  storico:'movimenti',
+  categorie:'impostazioni', conti:'impostazioni', persone:'impostazioni',
+  ricorrenti:'impostazioni', bilancio:'impostazioni', archivio:'impostazioni',
+};
+
+function navigateTo(viewId) {
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+viewId).classList.add('active');
+  const parentTab = _subParent[viewId] || viewId;
+  document.querySelector(`[data-view="${parentTab}"]`)?.classList.add('active');
+  if(viewId==='storico') renderStorico();
+  if(viewId==='persone') renderPersoneStats();
+  if(viewId==='archivio') renderArchivio();
+  if(viewId==='impostazioni') renderImpostazioni();
+  if(viewId==='bilancio') _renderBilancioNav();
+}
+
+function _renderBilancioNav() {
+  const sel = document.getElementById('bilPersona');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Tutti</option>';
+  DATA.persone.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    if(p === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+  renderBilancio();
+}
 
 /* ====================================================
    TABS
@@ -3318,18 +3378,6 @@ function exportBilancio(){
 document.getElementById('bilRefresh').addEventListener('click', renderBilancio);
 document.getElementById('bilExportPdf').addEventListener('click', exportBilancio);
 
-document.querySelector('[data-view="bilancio"]').addEventListener('click', () => {
-  const sel = document.getElementById('bilPersona');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Tutti</option>';
-  DATA.persone.forEach(p => {
-    const o = document.createElement('option');
-    o.value = p; o.textContent = p;
-    if(p === cur) o.selected = true;
-    sel.appendChild(o);
-  });
-  renderBilancio();
-});
 
 /* ====================================================
    ARCHIVIO
@@ -3376,7 +3424,6 @@ async function eliminaAnno(year, btn) {
   } catch(e) { toast(e.message, true); btn.disabled = false; }
 }
 
-document.querySelector('[data-view="archivio"]').addEventListener('click', renderArchivio);
 
 /* ====================================================
    IMPOSTAZIONI
