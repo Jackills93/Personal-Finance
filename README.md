@@ -68,11 +68,12 @@ Il bot serve a due cose: (a) registrare una spesa scrivendo un messaggio in chat
 5. Test: scrivi al bot `"12.50 Caffè"` — dovrebbe risponderti con una conferma e il movimento deve apparire nell'app. Se una categoria supera il limite mensile (sia da un movimento creato nell'app, sia da Telegram, sia da una ricorrenza generata in automatico), il bot manda un messaggio di avviso.
 
 **Sintassi messaggio:** `<importo> <descrizione> #categoria #persona #conto` — gli hashtag vanno **dopo** la descrizione, in quest'ordine, e sono tutti facoltativi:
-- `"25.50 Spesa supermercato"` → solo importo+descrizione, categoria indovinata per parole chiave.
+- `"25.50 Spesa supermercato"` → uscita (default), categoria indovinata per parole chiave.
 - `"25.50 Spesa supermercato #Alimentari"` → categoria esplicita.
 - `"25.50 Spesa supermercato #Alimentari #Pietro #Conto Principale"` → categoria, persona e conto espliciti.
+- `"+1200 Stipendio #Stipendio Pietro #Pietro"` → **entrata** (importo con `+` davanti). Senza categoria indicata, le entrate non hanno un riconoscimento automatico per parole chiave (a differenza delle uscite) — resta senza categoria finché non la imposti tu nell'app o la indichi con l'hashtag.
 
-Se la categoria indicata non corrisponde a nessuna categoria esistente, il bot ricade sul riconoscimento automatico per parole chiave.
+Se la categoria indicata non corrisponde a nessuna categoria esistente, il bot ricade sul riconoscimento automatico per parole chiave (solo per le uscite).
 
 Senza queste due variabili configurate, il resto dell'app funziona comunque normalmente: webhook e notifiche restano no-op silenziosi.
 
@@ -81,6 +82,12 @@ Senza queste due variabili configurate, il resto dell'app funziona comunque norm
 L'app non ha login/account: chiunque conosca l'URL del frontend vede e modifica gli stessi dati. Per bloccare l'accesso casuale, imposta su Render → Environment una variabile `APP_PASSWORD` con una password a tua scelta. Il backend la richiederà (header `X-App-Password`) su tutti gli endpoint dati; il frontend mostra una schermata di accesso al primo caricamento e poi la ricorda nel browser. `/health` e il webhook Telegram non la richiedono (restano protetti diversamente: il webhook dal controllo `TELEGRAM_CHAT_ID`).
 
 Senza `APP_PASSWORD` impostata, l'app funziona come oggi, senza nessuna protezione.
+
+> **Prima del lancio — checklist sicurezza:**
+> 1. Imposta `APP_PASSWORD` su Render con una password forte (almeno 12 caratteri, non riusare password di altri servizi).
+> 2. Imposta `APP_PASSWORD` anche su Vercel → Settings → Environment Variables → `APP_PASSWORD` con lo stesso valore (il serverless `/api/config` la inietta nel frontend).
+> 3. Non condividere l'URL del backend direttamente — usa solo l'URL Vercel del frontend.
+> 4. La password è salvata nel `localStorage` del browser dell'utente: se condividi il dispositivo, fai logout cancellando i dati del sito.
 
 ## Prossimi step (non ancora fatti)
 

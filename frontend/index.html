@@ -151,6 +151,14 @@ table td.amt.transfer{color:var(--info);}
 .modal-box .field{margin-bottom:12px;}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
 
+/* LOADING OVERLAY */
+.loading-overlay{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+.loading-overlay.hidden{display:none;}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-size:15px;font-weight:600;color:var(--ink);}
+.loading-sub{font-size:12px;color:var(--ink-dim);margin-top:-10px;}
+
 /* WIZARD ONBOARDING */
 .wizard-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center;}
 .wizard-overlay.hidden{display:none;}
@@ -329,6 +337,11 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
 </head>
 <body>
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-title">Connessione al server in corso...</div>
+  <div class="loading-sub">Il server si avvia in pochi secondi al primo accesso</div>
+</div>
 <div id="toast" class="toast"></div>
 
 <!-- MODAL MODIFICA LIMITE CATEGORIA -->
@@ -507,7 +520,10 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <h2 style="margin:0;">Movimenti</h2>
-      <button id="movViewToggle" class="ghost" style="font-size:12px;padding:6px 12px;">📅 Vista mensile</button>
+      <div style="display:flex;gap:8px;">
+        <button id="movExportCSV" class="ghost" style="font-size:12px;padding:6px 12px;">⬇ CSV</button>
+        <button id="movViewToggle" class="ghost" style="font-size:12px;padding:6px 12px;">📅 Vista mensile</button>
+      </div>
     </div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
@@ -1947,6 +1963,29 @@ document.getElementById('movViewToggle').addEventListener('click', () => {
   renderMovements();
 });
 
+document.getElementById('movExportCSV').addEventListener('click', () => {
+  const movs = getFilteredMovements();
+  if (!movs.length) { toast('Nessun movimento da esportare'); return; }
+  const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['Data','Tipo','Importo','Descrizione','Categoria','Persona','Conto'];
+  const rows = movs.map(m => [
+    m.date,
+    m.type === 'income' ? 'Entrata' : 'Uscita',
+    m.amount.toFixed(2),
+    m.description,
+    DATA.categories.find(c => c.id === m.category)?.name ?? '',
+    m.persona ?? '',
+    m.conto ?? ''
+  ].map(esc).join(','));
+  const csv = [header.map(esc).join(','), ...rows].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `movimenti_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
 function _movRowHTML(m) {
   const df = new Date(m.date+'T00:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
   const isTransfer = m.type==='transfer';
@@ -2657,6 +2696,7 @@ document.getElementById('mDate').value=todayISO();
 document.getElementById('giroDate').value=todayISO();
 
 async function initFromServer(){
+  document.getElementById('loadingOverlay').classList.remove('hidden');
   try {
     DATA.categories=await loadCategoriesFromAPI();
   } catch(e){ toast('Errore caricamento categorie: '+e.message,true); }
@@ -2681,6 +2721,7 @@ async function initFromServer(){
   try {
     DATA.investments=await loadInvestmentsFromAPI();
   } catch(e){ toast('Errore caricamento investimenti: '+e.message,true); }
+  document.getElementById('loadingOverlay').classList.add('hidden');
   renderAll();
   if(DATA.categories.length === 0 && DATA.conti.length === 0) showWizard();
 }
