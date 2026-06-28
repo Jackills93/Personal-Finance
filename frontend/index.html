@@ -531,19 +531,19 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <input type="text" id="movSearch" placeholder="Cerca per descrizione, categoria, persona…">
     </div>
     <div class="filter-bar">
-      <div class="field" style="flex:0 0 130px;"><label>Da</label><input type="date" id="movFilterFrom"></div>
-      <div class="field" style="flex:0 0 130px;"><label>A</label><input type="date" id="movFilterTo"></div>
+      <div class="field" style="flex:0 0 130px;"><label>Da</label><input type="date" id="movFilterFrom" autocomplete="off"></div>
+      <div class="field" style="flex:0 0 130px;"><label>A</label><input type="date" id="movFilterTo" autocomplete="off"></div>
       <div class="field" style="flex:0 0 120px;">
         <label>Tipo</label>
-        <select id="movFilterType">
+        <select id="movFilterType" autocomplete="off">
           <option value="">Tutti</option>
           <option value="expense">Uscite</option>
           <option value="income">Entrate</option>
           <option value="transfer">Giroconti</option>
         </select>
       </div>
-      <div class="field" style="flex:0 0 130px;"><label>Categoria</label><select id="movFilterCat"><option value="">Tutte</option></select></div>
-      <div class="field" style="flex:0 0 130px;"><label>Persona</label><select id="movFilterPersona"><option value="">Tutte</option></select></div>
+      <div class="field" style="flex:0 0 130px;"><label>Categoria</label><select id="movFilterCat" autocomplete="off"><option value="">Tutte</option></select></div>
+      <div class="field" style="flex:0 0 130px;"><label>Persona</label><select id="movFilterPersona" autocomplete="off"><option value="">Tutte</option></select></div>
       <div class="field" style="flex:0 0 auto;"><label>&nbsp;</label><button class="ghost" id="clearFilters">✕ Reset</button></div>
     </div>
     <div id="movSummary" style="display:none;background:var(--panel-2);border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:13px;gap:20px;flex-wrap:wrap;align-items:center;"></div>

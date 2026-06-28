@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.category_guess import guess_category_id
 from app.config import settings
 from app.database import get_db
-from app.models import Category
+from app.models import Category, Person
 from app.schemas.movement import MovementCreate, MovementType
 from app.services import create_movement_and_notify
 from app.telegram_client import send_telegram_message
@@ -49,6 +49,13 @@ def find_category_by_name(db: Session, name: str) -> Category | None:
     )
 
 
+def find_person_by_name(db: Session, name: str) -> Person | None:
+    return (
+        db.query(Person).filter(Person.name.ilike(name)).first()
+        or db.query(Person).filter(Person.name.ilike(f"%{name}%")).first()
+    )
+
+
 def _authorized_chat_map() -> dict[str, str]:
     """Restituisce {chat_id: nome_persona} per tutti gli ID configurati."""
     mapping: dict[str, str] = {}
@@ -72,8 +79,14 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
         logger.warning("Messaggio Telegram da chat non autorizzata: %s", chat_id)
         return {"ok": True}
 
-    # Persona dedotta dall'account che ha scritto — non serve #hashtag
-    auto_person = chat_map[chat_id]
+    # Persona: usa TELEGRAM_CHAT_ID_NAME se configurato, altrimenti first_name Telegram
+    configured_name = chat_map[chat_id].strip()
+    telegram_first_name = message.get("from", {}).get("first_name", "").strip()
+    raw_person = configured_name or telegram_first_name
+
+    # Normalizza il nome cercandolo nel DB (gestisce differenze di maiuscole)
+    person_obj = find_person_by_name(db, raw_person) if raw_person else None
+    person_name = person_obj.name if person_obj else (raw_person or None)
 
     main_text, tags = extract_hashtags(message["text"])
     parsed = parse_message(main_text)
@@ -88,8 +101,6 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
 
     movement_type, amount, description = parsed
     # Sintassi: "importo descrizione #categoria #conto"
-    # La persona è automatica dal chat_id; stringa vuota = non configurata → None
-    person_name = auto_person.strip() or None
     category_name = tags[0].strip() or None if len(tags) > 0 else None
     account_name = tags[1].strip() or None if len(tags) > 1 else None
 
