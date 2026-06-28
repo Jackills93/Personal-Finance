@@ -88,10 +88,10 @@ def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
 
     movement_type, amount, description = parsed
     # Sintassi: "importo descrizione #categoria #conto"
-    # La persona è automatica dal chat_id, non serve più come hashtag
-    person_name = auto_person
-    category_name = tags[0] if len(tags) > 0 else None
-    account_name = tags[1] if len(tags) > 1 else None
+    # La persona è automatica dal chat_id; stringa vuota = non configurata → None
+    person_name = auto_person.strip() or None
+    category_name = tags[0].strip() or None if len(tags) > 0 else None
+    account_name = tags[1].strip() or None if len(tags) > 1 else None
 
     category = find_category_by_name(db, category_name) if category_name else None
     if category:

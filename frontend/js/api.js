@@ -126,7 +126,9 @@ async function deletePersonAPI(name) {
    nel prototipo originale, nessuna risoluzione necessaria.
 */
 function contoIdByName(name, contiList) {
-  return name ? (contiList.find((c) => c.name === name)?.id ?? null) : null;
+  if (!name) return null;
+  const n = name.trim().toLowerCase();
+  return contiList.find((c) => c.name.trim().toLowerCase() === n)?.id ?? null;
 }
 function nameByContoId(id, contiList) {
   return id ? (contiList.find((c) => c.id === id)?.name ?? null) : null;
