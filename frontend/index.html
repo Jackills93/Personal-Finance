@@ -152,11 +152,11 @@ table td.amt.transfer{color:var(--info);}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
 
 /* RISK PROFILE CARDS */
-.risk-profile-card{flex:1;background:var(--panel-2);border:2px solid var(--line);border-radius:var(--radius);padding:14px 12px;cursor:pointer;text-align:center;transition:border-color .15s,background .15s;}
+.risk-profile-card{flex:1;background:var(--panel-2);border:2px solid var(--line);border-radius:var(--radius);padding:14px 12px;cursor:pointer;text-align:center;transition:border-color .15s,background .15s;color:var(--ink);}
 .risk-profile-card:hover{border-color:var(--accent-dim);}
 .risk-profile-card.active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
-.rpcard-icon{font-size:22px;margin-bottom:6px;}
-.rpcard-label{font-size:13px;font-weight:700;margin-bottom:3px;}
+.rpcard-icon{font-size:22px;margin-bottom:6px;filter:brightness(0) invert(1);}
+.rpcard-label{font-size:13px;font-weight:700;margin-bottom:3px;color:var(--ink);}
 .rpcard-desc{font-size:11px;color:var(--ink-dim);}
 
 /* LOADING OVERLAY */
@@ -3358,10 +3358,11 @@ function renderInvAnalysis(){
     <span class="${cls}" style="font-family:'IBM Plex Mono',monospace;">${i.rend>=0?'+':''}${i.rend.toFixed(2)}% &nbsp;${i.pnl>=0?'+':''}${fmtCur(i.pnl)}</span>
   </div>`;
 
-  const top3 = sorted.slice(0,3);
-  const bot3 = sorted.slice(-3).reverse();
+  const top3 = sorted.slice(0, Math.min(3, Math.ceil(sorted.length / 2)));
+  const topIds = new Set(top3.map(i => i.id));
+  const bot3 = sorted.filter(i => !topIds.has(i.id)).slice(-3).reverse();
   document.getElementById('invTopPerf').innerHTML = top3.length ? top3.map(i=>perfRow(i,'inc')).join('') : '<span style="font-size:12px;color:var(--ink-faint);">—</span>';
-  document.getElementById('invBotPerf').innerHTML = bot3.length ? bot3.map(i=>perfRow(i,'exp')).join('') : '<span style="font-size:12px;color:var(--ink-faint);">—</span>';
+  document.getElementById('invBotPerf').innerHTML = bot3.length ? bot3.map(i=>perfRow(i,'exp')).join('') : '<span style="font-size:12px;color:var(--ink-faint);">Aggiungi altre posizioni per confrontare.</span>';
 
   // --- alert concentrazione (posizioni > 20%) ---
   const concentrated = invs.filter(i => (i.qty*i.curPrice/totalVal) > 0.20);
