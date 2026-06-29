@@ -1,95 +1,134 @@
-# Bilancio
+# Personal Finance Dashboard
 
-App di gestione finanze personali. Fase attuale: categorie, movimenti e spese ricorrenti vivono su un backend FastAPI + Supabase Postgres, con bot Telegram per loggare spese e notifiche di superamento limite mensile; conti, obiettivi, persone e investimenti restano (per ora) in `localStorage` nel frontend, in attesa delle rispettive API.
+App di gestione finanze personali con backend API, bot Telegram e analisi del portafoglio investimenti.
 
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/Jackills93/Personal-Finance)
+
+---
+
+## Funzionalità
+
+- **Dashboard** — saldo totale, entrate/uscite del mese, grafico spese per categoria
+- **Movimenti** — CRUD completo con filtri, vista lista e vista mensile, export CSV
+- **Spese ricorrenti** — mutuo, abbonamenti e rate generate automaticamente ogni mese
+- **Obiettivi di risparmio** — traccia l'avanzamento verso traguardi finanziari
+- **Investimenti** — portafoglio con P&L, grafici e analisi del profilo di rischio
+- **Bot Telegram** — registra spese con un messaggio (`"25 Spesa supermercato #Alimentari"`)
+- **Notifiche limite** — avviso Telegram quando una categoria supera il budget mensile
+- **Wizard onboarding** — configurazione guidata al primo accesso (conti, categorie, persone)
+- **Multi-persona** — supporto per più utenti (es. coppia) con filtro per persona
+- **Tema scuro** — interfaccia dark con supporto valute e lingua configurabili
+
+## Stack
+
+| Layer | Tecnologia |
+|---|---|
+| Backend | FastAPI + SQLAlchemy (Python) |
+| Database | PostgreSQL (Railway o Supabase) |
+| Frontend | HTML/CSS/JS puro (nessun framework) |
+| Backend hosting | Railway |
+| Frontend hosting | Vercel |
+| Notifiche | Telegram Bot API |
+
+---
+
+## Deploy in produzione
+
+### 1. Database PostgreSQL
+
+**Opzione A — Railway PostgreSQL** (consigliato con il deploy button)
+1. Nel progetto Railway, clicca **+ New** → **Database** → **PostgreSQL**
+2. Railway inietta `DATABASE_URL` automaticamente — non serve copiare nulla
+
+**Opzione B — Supabase**
+1. Crea un progetto su [supabase.com](https://supabase.com)
+2. Vai su **SQL Editor** → incolla il contenuto di [`supabase/schema.sql`](supabase/schema.sql) → esegui
+3. Copia la stringa da **Settings → Database → Connection string → Connection pooling** (Transaction, porta 6543)
+4. Cambia il prefisso da `postgresql://` a `postgresql+psycopg://`
+
+### 2. Backend su Railway
+
+1. Clicca il pulsante **Deploy on Railway** in cima a questo file
+2. In Railway, imposta **Root Directory = `backend`** nelle impostazioni del servizio
+3. Aggiungi le variabili d'ambiente (vedi [`backend/.env.example`](backend/.env.example)):
+
+| Variabile | Obbligatoria | Descrizione |
+|---|---|---|
+| `DATABASE_URL` | ✓ | Stringa connessione PostgreSQL |
+| `CORS_ORIGINS` | ✓ | URL del frontend Vercel (es. `https://tuo-progetto.vercel.app`) |
+| `APP_PASSWORD` | ✓ | Password per proteggere l'app |
+| `TELEGRAM_BOT_TOKEN` | — | Token del bot da @BotFather |
+| `TELEGRAM_CHAT_ID` | — | Chat ID numerico dell'utente principale |
+| `TELEGRAM_CHAT_ID_NAME` | — | Nome dell'utente (usa il first_name Telegram se vuoto) |
+| `TELEGRAM_CHAT_ID_GRETA` | — | Chat ID secondo utente (opzionale) |
+| `TELEGRAM_CHAT_ID_GRETA_NAME` | — | Nome secondo utente (opzionale) |
+
+### 3. Frontend su Vercel
+
+1. Su [vercel.com](https://vercel.com) → **New Project** → importa il repo
+2. Imposta **Root Directory = `frontend`**
+3. Aggiungi le variabili d'ambiente:
+   - `API_BASE_URL` = URL del backend Railway (es. `https://tuo-backend.up.railway.app`)
+   - `APP_PASSWORD` = stessa password impostata su Railway
+4. Deploy
+
+5. Torna su Railway e aggiorna `CORS_ORIGINS` con l'URL Vercel ottenuto
+
+### 4. Bot Telegram (opzionale)
+
+Il bot permette di registrare spese via messaggio e ricevere notifiche quando si supera un budget mensile. Richiede un URL pubblico HTTPS — funziona solo dopo il deploy.
+
+1. Crea il bot con **@BotFather** → `/newbot` → ottieni il token
+2. Trova il tuo chat ID: scrivi al bot, poi apri `https://api.telegram.org/bot<TOKEN>/getUpdates`
+3. Imposta `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` su Railway
+4. Registra il webhook (una tantum, dopo il deploy):
+   ```bash
+   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<tuo-backend>.up.railway.app/telegram/webhook"
+   ```
+
+**Sintassi messaggi:**
 ```
-Dashboard_finance/
-├── bilancio.html       # prototipo originale (localStorage), lasciato com'è come riferimento
-├── backend/             # FastAPI
-├── supabase/schema.sql  # DDL completo da eseguire su Supabase
-└── frontend/            # index.html (migrato) + js/api.js
+25.50 Spesa supermercato              → uscita, categoria auto-rilevata
+25.50 Spesa supermercato #Alimentari  → categoria esplicita
+25.50 Spesa supermercato #Alimentari #Revolut  → categoria + conto
++1200 Stipendio #Entrate              → entrata (+ davanti all'importo)
 ```
+La persona viene rilevata automaticamente dal chat ID — non serve indicarla.
 
-## 1. Creare il progetto Supabase (da zero)
+---
 
-1. Vai su [supabase.com](https://supabase.com), crea un account e un nuovo progetto (free tier — scegli una regione vicina, es. `eu-central-1`).
-2. Aspetta che il progetto finisca il provisioning (1-2 minuti).
-3. Vai su **SQL Editor** → **New query**, incolla tutto il contenuto di [`supabase/schema.sql`](supabase/schema.sql) ed esegui (▶ Run). Questo crea tutte le tabelle (`categories`, `movements`, `accounts`, `persons`, `goals`, `investments`, `recurring_expenses`).
-4. Vai su **Settings → Database → Connection string**, scheda **Connection pooling** (modalità *Transaction*, porta `6543`) — è la stringa compatibile con Render free tier. Copiala e sostituisci `[YOUR-PASSWORD]` con la password del database (quella scelta alla creazione del progetto, o resettabile dalla stessa pagina). Il backend usa il driver `psycopg` (v3): cambia il prefisso della stringa da `postgresql://` a `postgresql+psycopg://` (vedi `backend/.env.example`).
-
-## 2. Backend — avvio in locale
+## Sviluppo locale
 
 ```bash
+# Backend
 cd backend
 python -m venv venv
-venv\Scripts\activate          # Windows
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # macOS/Linux
 pip install -r requirements.txt
-copy .env.example .env          # poi apri .env e incolla la tua DATABASE_URL
+cp .env.example .env         # compila DATABASE_URL e le altre variabili
 uvicorn app.main:app --reload
+
+# Swagger: http://localhost:8000/docs
 ```
 
-- Swagger interattivo: http://localhost:8000/docs
-- Health check: http://localhost:8000/health
+```bash
+# Frontend
+# Apri frontend/index.html con un live server (es. estensione VS Code "Live Server")
+# oppure:
+npx serve frontend
+```
 
-`CORS_ORIGINS` in `.env` deve includere l'origine da cui apri `frontend/index.html` (es. `http://localhost:5500` se usi un live server, o `http://127.0.0.1:5500`).
+In `.env` imposta `CORS_ORIGINS=http://localhost:5500,http://127.0.0.1:5500`.
 
-## 3. Frontend — avvio in locale
+---
 
-`frontend/index.html` è un file statico: aprilo con un qualsiasi live server (es. estensione "Live Server" di VS Code, o `npx serve frontend`). Verifica che `API_BASE_URL` in `frontend/js/api.js` punti al backend locale (`http://localhost:8000` di default).
+## Sicurezza
 
-Apri la pagina: Dashboard, Movimenti e Categorie devono mostrare i dati provenienti dal backend (inizialmente vuoti — crea una categoria e un movimento dall'interfaccia per verificare). Conti, Obiettivi, Persone, Investimenti continuano a funzionare come nel prototipo originale (dati in `localStorage`).
+L'app usa una password condivisa (`APP_PASSWORD`) che protegge tutti gli endpoint dati tramite header `X-App-Password`. Il frontend mostra una schermata di login al primo accesso e salva la password nel `localStorage` del browser.
 
-## 4. Deploy backend su Render (free tier)
+- `/health` e il webhook Telegram sono pubblici (non richiedono password)
+- Il webhook è protetto dal controllo del `TELEGRAM_CHAT_ID` — solo i chat ID configurati possono scrivere dati
+- Non condividere l'URL del backend — usa sempre l'URL Vercel del frontend
 
-1. Pusha questa cartella su un repo Git (GitHub/GitLab).
-2. Su [render.com](https://render.com), **New → Web Service**, collega il repo. Render rileva `backend/render.yaml` (oppure configuralo a mano: root directory `backend`, build command `pip install -r requirements.txt`, start command `uvicorn app.main:app --host 0.0.0.0 --port $PORT`).
-3. Imposta le environment variable `DATABASE_URL` e `CORS_ORIGINS` (quest'ultima con l'URL del frontend su Vercel, vedi sotto) nel pannello Render.
-4. Nota: il piano free di Render "dorme" dopo ~15 minuti di inattività — la prima richiesta dopo lo sleep impiega qualche secondo extra. Accettabile per uso personale.
-
-## 5. Deploy frontend su Vercel
-
-1. Su [vercel.com](https://vercel.com), **New Project**, importa il repo, imposta **Root Directory** = `frontend`.
-2. Prima del deploy, aggiorna `API_BASE_URL` in `frontend/js/api.js` con l'URL pubblico del backend su Render (es. `https://bilancio-api.onrender.com`).
-3. Deploy. Poi torna su Render e aggiorna `CORS_ORIGINS` con l'URL Vercel ottenuto (es. `https://bilancio.vercel.app`).
-
-## 6. Bot Telegram — logging spese e notifiche limite
-
-Il bot serve a due cose: (a) registrare una spesa scrivendo un messaggio in chat (es. `"25.50 Spesa supermercato"`), (b) avvisarti quando una categoria supera il limite mensile. Entrambe usano lo stesso bot/token, niente servizi aggiuntivi.
-
-**Importante:** Telegram richiede un URL pubblico HTTPS per il webhook — non funziona contro `localhost`. Questi passi (in particolare l'ultimo) vanno fatti **dopo** il deploy su Render (punto 4); se vuoi testare prima, serve un tunnel come [ngrok](https://ngrok.com).
-
-1. Su Telegram, apri una chat con **@BotFather**, manda `/newbot`, scegli nome e username. Ottieni un **token** tipo `123456789:AAExxxxxxx...`.
-2. Trova il tuo **chat ID**: scrivi un qualsiasi messaggio al bot appena creato, poi apri nel browser `https://api.telegram.org/bot<TOKEN>/getUpdates` — nel JSON di risposta cerca `"chat":{"id":NNNNNNN...}`. Alternativa più comoda: scrivi a [@userinfobot](https://t.me/userinfobot), ti risponde subito con il tuo id.
-3. Su Render, vai sul servizio backend → **Environment**, aggiungi `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` con i valori ottenuti sopra. Salva (Render fa il redeploy automatico).
-4. Registra il webhook (una tantum, dopo che il backend è online su Render):
-   ```bash
-   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<tuo-backend>.onrender.com/telegram/webhook"
-   ```
-5. Test: scrivi al bot `"12.50 Caffè"` — dovrebbe risponderti con una conferma e il movimento deve apparire nell'app. Se una categoria supera il limite mensile (sia da un movimento creato nell'app, sia da Telegram, sia da una ricorrenza generata in automatico), il bot manda un messaggio di avviso.
-
-**Sintassi messaggio:** `<importo> <descrizione> #categoria #persona #conto` — gli hashtag vanno **dopo** la descrizione, in quest'ordine, e sono tutti facoltativi:
-- `"25.50 Spesa supermercato"` → uscita (default), categoria indovinata per parole chiave.
-- `"25.50 Spesa supermercato #Alimentari"` → categoria esplicita.
-- `"25.50 Spesa supermercato #Alimentari #Pietro #Conto Principale"` → categoria, persona e conto espliciti.
-- `"+1200 Stipendio #Stipendio Pietro #Pietro"` → **entrata** (importo con `+` davanti). Senza categoria indicata, le entrate non hanno un riconoscimento automatico per parole chiave (a differenza delle uscite) — resta senza categoria finché non la imposti tu nell'app o la indichi con l'hashtag.
-
-Se la categoria indicata non corrisponde a nessuna categoria esistente, il bot ricade sul riconoscimento automatico per parole chiave (solo per le uscite).
-
-Senza queste due variabili configurate, il resto dell'app funziona comunque normalmente: webhook e notifiche restano no-op silenziosi.
-
-## 7. Protezione con password
-
-L'app non ha login/account: chiunque conosca l'URL del frontend vede e modifica gli stessi dati. Per bloccare l'accesso casuale, imposta su Render → Environment una variabile `APP_PASSWORD` con una password a tua scelta. Il backend la richiederà (header `X-App-Password`) su tutti gli endpoint dati; il frontend mostra una schermata di accesso al primo caricamento e poi la ricorda nel browser. `/health` e il webhook Telegram non la richiedono (restano protetti diversamente: il webhook dal controllo `TELEGRAM_CHAT_ID`).
-
-Senza `APP_PASSWORD` impostata, l'app funziona come oggi, senza nessuna protezione.
-
-> **Prima del lancio — checklist sicurezza:**
-> 1. Imposta `APP_PASSWORD` su Render con una password forte (almeno 12 caratteri, non riusare password di altri servizi).
-> 2. Imposta `APP_PASSWORD` anche su Vercel → Settings → Environment Variables → `APP_PASSWORD` con lo stesso valore (il serverless `/api/config` la inietta nel frontend).
-> 3. Non condividere l'URL del backend direttamente — usa solo l'URL Vercel del frontend.
-> 4. La password è salvata nel `localStorage` del browser dell'utente: se condividi il dispositivo, fai logout cancellando i dati del sito.
-
-## Prossimi step (non ancora fatti)
-
-- API CRUD per `accounts`, `persons`, `goals`, `investments` + migrazione delle colonne FK reali su `movements`/`recurring_expenses` (oggi `account_name`/`person_name`/ecc. sono testo denormalizzato, vedi commenti in `supabase/schema.sql`).
-- Supabase Auth + Row Level Security, quando si passerà a multi-utente (oggi l'app è single-user, nessuna autenticazione).
+> Per uso multi-utente con autenticazione per-account, servirebbe integrare Supabase Auth con Row Level Security — non è incluso in questa versione.
