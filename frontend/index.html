@@ -151,6 +151,14 @@ table td.amt.transfer{color:var(--info);}
 .modal-box .field{margin-bottom:12px;}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
 
+/* RISK PROFILE CARDS */
+.risk-profile-card{flex:1;background:var(--panel-2);border:2px solid var(--line);border-radius:var(--radius);padding:14px 12px;cursor:pointer;text-align:center;transition:border-color .15s,background .15s;}
+.risk-profile-card:hover{border-color:var(--accent-dim);}
+.risk-profile-card.active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.rpcard-icon{font-size:22px;margin-bottom:6px;}
+.rpcard-label{font-size:13px;font-weight:700;margin-bottom:3px;}
+.rpcard-desc{font-size:11px;color:var(--ink-dim);}
+
 /* LOADING OVERLAY */
 .loading-overlay{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 .loading-overlay.hidden{display:none;}
@@ -797,6 +805,32 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <!-- ANALISI PORTAFOGLIO -->
   <div class="panel" id="invAnalysisPanel" style="display:none;margin-top:16px;">
     <h2>Analisi portafoglio</h2>
+
+    <!-- Selettore profilo di rischio -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim);margin-bottom:10px;">Il tuo profilo di rischio</div>
+      <div style="display:flex;gap:10px;">
+        <button class="risk-profile-card" data-profile="conservativo">
+          <div class="rpcard-icon">🛡</div>
+          <div class="rpcard-label">Conservativo</div>
+          <div class="rpcard-desc">Preservo il capitale</div>
+        </button>
+        <button class="risk-profile-card" data-profile="moderato">
+          <div class="rpcard-icon">⚖</div>
+          <div class="rpcard-label">Moderato</div>
+          <div class="rpcard-desc">Crescita equilibrata</div>
+        </button>
+        <button class="risk-profile-card" data-profile="aggressivo">
+          <div class="rpcard-icon">📈</div>
+          <div class="rpcard-label">Aggressivo</div>
+          <div class="rpcard-desc">Massimizo il rendimento</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Risultato confronto profilo vs portafoglio -->
+    <div id="invRiskResult" style="margin-bottom:20px;"></div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:16px;">
       <!-- Allocazione per tipo -->
       <div>
@@ -1329,6 +1363,7 @@ function navigateTo(viewId) {
   document.querySelector(`[data-view="${parentTab}"]`)?.classList.add('active');
   if(viewId==='dashboard') renderDashboard();
   if(viewId==='movimenti') renderMovements();
+  if(viewId==='investimenti') renderInvestimenti();
   if(viewId==='categorie') renderCategories();
   if(viewId==='conti') renderConti();
   if(viewId==='ricorrenti') renderRecurring();
@@ -3274,6 +3309,7 @@ function renderInvestimenti(){
   }
 
   renderInvAnalysis();
+  renderRiskProfileCards();
 }
 
 function renderInvAnalysis(){
@@ -3339,7 +3375,117 @@ function renderInvAnalysis(){
   } else {
     concEl.innerHTML = `<div style="font-size:12px;color:var(--good);">✓ Nessuna posizione supera il 20% del portafoglio.</div>`;
   }
+
+  renderInvRiskResult();
 }
+
+/* ====================================================
+   PROFILO DI RISCHIO INVESTIMENTI
+==================================================== */
+const RISK_PROFILE_KEY = 'inv_risk_profile';
+
+const INV_RISK_TYPE = { obbligazione:1.0, etf:1.8, azione:2.5, crypto:3.0, altro:2.0 };
+const INV_RISK_SECTOR = {
+  'Bond':-0.4, 'Real Estate':-0.1, 'ETF':-0.3,
+  'Tech':0.2, 'Crypto':0.5, 'Energy':0.1, 'Finance':0.1,
+  'Healthcare':0, 'Consumer':-0.1, 'Industrial':0.1,
+  'Materials':0.1, 'Materie Prime':0.2, 'Altro':0
+};
+const RISK_META = {
+  conservativo: { icon:'🛡', label:'Conservativo', color:'var(--good)',
+    limits:{ crypto:0.05, azione:0.25 },
+    advice:'Riduci crypto e azioni singole; aumenta ETF obbligazionari o bond.' },
+  moderato: { icon:'⚖', label:'Moderato', color:'#F2C14E',
+    limits:{ crypto:0.15, azione:0.50 },
+    advice:'Riduci le posizioni più rischiose o bilancia con ETF diversificati.' },
+  aggressivo: { icon:'📈', label:'Aggressivo', color:'var(--bad)',
+    limits:{ crypto:1, azione:1 },
+    advice:'' }
+};
+
+function _invPositionRisk(inv){
+  return Math.max(1, Math.min(3,
+    (INV_RISK_TYPE[inv.type] || 2.0) + (INV_RISK_SECTOR[inv.sector] || 0)
+  ));
+}
+function _portfolioRiskScore(invs){
+  const tot = invs.reduce((s,i) => s + i.qty*i.curPrice, 0);
+  if(!tot) return 0;
+  return invs.reduce((s,i) => s + _invPositionRisk(i)*(i.qty*i.curPrice), 0) / tot;
+}
+function _scoreToProfile(score){
+  if(score <= 1.6) return 'conservativo';
+  if(score <= 2.3) return 'moderato';
+  return 'aggressivo';
+}
+
+function renderRiskProfileCards(){
+  const saved = localStorage.getItem(RISK_PROFILE_KEY);
+  document.querySelectorAll('.risk-profile-card').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.profile === saved)
+  );
+}
+
+function renderInvRiskResult(){
+  const el = document.getElementById('invRiskResult');
+  if(!el) return;
+  const invs = DATA.investments || [];
+  const userProfile = localStorage.getItem(RISK_PROFILE_KEY);
+
+  if(!userProfile){
+    el.innerHTML = `<div style="font-size:12px;color:var(--ink-dim);">Seleziona il tuo profilo di rischio per vedere l'analisi di compatibilità.</div>`;
+    return;
+  }
+  if(!invs.length){ el.innerHTML=''; return; }
+
+  const score = _portfolioRiskScore(invs);
+  const portProfile = _scoreToProfile(score);
+  const portMeta = RISK_META[portProfile];
+  const userMeta = RISK_META[userProfile];
+  const totalVal = invs.reduce((s,i) => s + i.qty*i.curPrice, 0);
+
+  // controlla limiti per tipo
+  const byType = {};
+  invs.forEach(i => { byType[i.type] = (byType[i.type]||0) + i.qty*i.curPrice; });
+  const warnings = Object.entries(RISK_META[userProfile].limits)
+    .filter(([type, max]) => (byType[type]||0)/totalVal > max)
+    .map(([type, max]) => {
+      const pct = ((byType[type]||0)/totalVal*100).toFixed(0);
+      return `<strong>${type}</strong> al ${pct}% (limite ${(max*100).toFixed(0)}%)`;
+    });
+
+  const profiles = ['conservativo','moderato','aggressivo'];
+  const aligned = portProfile === userProfile;
+  const portMore = profiles.indexOf(portProfile) > profiles.indexOf(userProfile);
+
+  const scoreBar = `<span style="display:inline-block;background:${portMeta.color};color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;opacity:.85;">
+    ${portMeta.icon} ${portMeta.label} — score ${score.toFixed(1)}/3.0
+  </span>`;
+
+  if(aligned){
+    el.innerHTML = `<div style="background:rgba(111,227,160,.12);border:1px solid rgba(111,227,160,.35);border-radius:6px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:12px;">
+      <span style="font-size:16px;">✓</span>
+      <span>Portafoglio ${scoreBar} in linea con il profilo dichiarato <strong>${userMeta.icon} ${userMeta.label}</strong>.</span>
+    </div>`;
+  } else {
+    el.innerHTML = `<div style="background:rgba(255,100,80,.08);border:1px solid rgba(255,100,80,.35);border-radius:6px;padding:12px 14px;font-size:12px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:15px;">⚠</span>
+        <span>Portafoglio ${scoreBar} — non in linea con il profilo <strong>${userMeta.icon} ${userMeta.label}</strong>.</span>
+      </div>
+      ${warnings.length ? `<div style="margin-bottom:6px;color:var(--ink-dim);">Sforamenti: ${warnings.join(' · ')}</div>` : ''}
+      <div style="color:var(--ink-dim);">${portMore ? userMeta.advice : 'Il portafoglio è più prudente del necessario — potresti aumentare la quota azionaria o ETF per avvicinarti al tuo profilo.'}</div>
+    </div>`;
+  }
+}
+
+document.querySelectorAll('.risk-profile-card').forEach(btn => {
+  btn.addEventListener('click', () => {
+    localStorage.setItem(RISK_PROFILE_KEY, btn.dataset.profile);
+    renderRiskProfileCards();
+    renderInvRiskResult();
+  });
+});
 
 /* ====================================================
    ICONA ATTENZIONE CATEGORIA (patch renderCategories)
