@@ -743,7 +743,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 
   <div class="panel" style="margin-bottom:16px;">
-    <h2>Aggiungi posizione</h2>
+    <h2 id="invFormTitle">Aggiungi posizione</h2>
     <div class="form-row" style="align-items:flex-end;flex-wrap:wrap;">
       <div class="field" style="flex:0 0 230px;">
         <label>Cerca titolo / ETF / ticker / ISIN</label>
@@ -760,6 +760,7 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <div class="field" style="flex:0 0 130px;"><label id="invPriceLabel">Prezzo medio</label><input type="number" id="invPrice" placeholder="0.00" step="0.01" min="0"></div>
       <div class="field" style="flex:0 0 130px;"><label id="invCurPriceLabel">Prezzo attuale</label><input type="number" id="invCurPrice" placeholder="0.00" step="0.01" min="0"></div>
       <div class="field" style="flex:0 0 auto;"><label>&nbsp;</label><button class="primary" id="addInvBtn">Aggiungi</button></div>
+      <div class="field" id="cancelEditInvField" style="display:none;flex:0 0 auto;"><label>&nbsp;</label><button id="cancelEditInvBtn">Annulla</button></div>
     </div>
     <div style="margin-top:8px;display:flex;align-items:center;gap:8px;min-height:20px;">
       <span style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;">Rilevato:</span>
@@ -2983,6 +2984,7 @@ const SECTOR_COLORS={
 
 // Stato selezione titolo corrente
 let selectedTitolo = null;
+let editingInvestmentId = null;
 
 // Autocomplete ricerca titolo
 const invSearchEl=document.getElementById('invSearch');
@@ -2996,6 +2998,23 @@ function invSetDetectedBadge(type, sector) {
 document.getElementById('invIsinManual').addEventListener('input',function(){
   const isin=this.value.trim().toUpperCase();
   if(isin.length<2) return;
+
+  // Cerca prima un match esatto nel database titoli
+  const match=TITOLI_DB.find(t=>t.isin && t.isin.toUpperCase()===isin);
+  if(match){
+    selectedTitolo=match;
+    invSearchEl.value=`${match.t} — ${match.n}`;
+    invSuggestEl.style.display='none';
+    document.getElementById('invType').value=match.tp;
+    const secMap0={'azione':'Tech','etf':'ETF','crypto':'Crypto','obbligazione':'Bond','altro':'Altro'};
+    const sector0=match.s||secMap0[match.tp]||'Altro';
+    document.getElementById('invSector').value=sector0;
+    invSetDetectedBadge(match.tp,sector0);
+    return;
+  }
+
+  // Nessun match: l'ISIN non è nel database, lascia inserimento manuale
+  selectedTitolo=null;
   const prefix=isin.substring(0,2);
   const etfPrefixes=['IE','LU','FR','DE'];
   const cryptoPrefixes=['XB','XC'];
@@ -3098,33 +3117,76 @@ document.getElementById('addInvBtn').addEventListener('click',async ()=>{
     toast('ISIN non valido — formato: 2 lettere + 10 caratteri (es. IE00BK5BQT80)',true);return;
   }
 
-  // Se esiste già, aggiorna (media ponderata)
-  const existing=DATA.investments.find(i=>i.ticker===ticker);
   try {
-    if(existing){
-      const totCost=existing.qty*existing.avgPrice+qty*price;
-      const totQty=existing.qty+qty;
-      const patch={qty:totQty,avg_price:totCost/totQty,cur_price:curPrice};
-      if(isin) patch.isin=isin;
-      const updated=await updateInvestmentAPI(existing.id,patch);
-      const idx=DATA.investments.findIndex(i=>i.id===existing.id);
+    if(editingInvestmentId){
+      // Modifica posizione esistente: sostituisce i valori, ricalcolo automatico al render
+      const patch={ticker,name,isin:isin||null,type,sector,qty,avg_price:price,cur_price:curPrice};
+      const updated=await updateInvestmentAPI(editingInvestmentId,patch);
+      const idx=DATA.investments.findIndex(i=>i.id===editingInvestmentId);
       if(idx>=0) DATA.investments[idx]=updated;
-      toast(`Posizione aggiornata: ${ticker}`);
+      toast(`Posizione ${ticker} aggiornata`);
+      cancelEditInv();
     } else {
-      const created=await createInvestmentAPI({ticker,name,isin:isin||null,type,sector,qty,avgPrice:price,curPrice});
-      DATA.investments.push(created);
-      toast(`${ticker} aggiunto al portafoglio`);
+      // Se esiste già, aggiorna (media ponderata)
+      const existing=DATA.investments.find(i=>i.ticker===ticker);
+      if(existing){
+        const totCost=existing.qty*existing.avgPrice+qty*price;
+        const totQty=existing.qty+qty;
+        const patch={qty:totQty,avg_price:totCost/totQty,cur_price:curPrice};
+        if(isin) patch.isin=isin;
+        const updated=await updateInvestmentAPI(existing.id,patch);
+        const idx=DATA.investments.findIndex(i=>i.id===existing.id);
+        if(idx>=0) DATA.investments[idx]=updated;
+        toast(`Posizione aggiornata: ${ticker}`);
+      } else {
+        const created=await createInvestmentAPI({ticker,name,isin:isin||null,type,sector,qty,avgPrice:price,curPrice});
+        DATA.investments.push(created);
+        toast(`${ticker} aggiunto al portafoglio`);
+      }
+      invSearchEl.value='';selectedTitolo=null;
+      document.getElementById('invDetectedBadge').textContent='—';
+      document.getElementById('invIsinManual').value='';
+      document.getElementById('invQty').value='';
+      document.getElementById('invPrice').value='';
+      document.getElementById('invCurPrice').value='';
     }
   } catch(e){ toast('Errore: '+e.message,true); return; }
 
-  invSearchEl.value='';selectedTitolo=null;
+  renderInvestimenti();
+});
+
+function startEditInv(id){
+  const inv=DATA.investments.find(i=>i.id===id);
+  if(!inv) return;
+  editingInvestmentId=id;
+  selectedTitolo={t:inv.ticker,n:inv.name,isin:inv.isin||'',tp:inv.type,s:inv.sector};
+  invSearchEl.value=`${inv.ticker} — ${inv.name}`;
+  document.getElementById('invIsinManual').value=inv.isin||'';
+  document.getElementById('invType').value=inv.type;
+  document.getElementById('invSector').value=inv.sector;
+  document.getElementById('invQty').value=inv.qty;
+  document.getElementById('invPrice').value=inv.avgPrice;
+  document.getElementById('invCurPrice').value=inv.curPrice;
+  invSetDetectedBadge(inv.type,inv.sector);
+  document.getElementById('invFormTitle').textContent='Modifica posizione';
+  document.getElementById('addInvBtn').textContent='Salva modifiche';
+  document.getElementById('cancelEditInvField').style.display='flex';
+  document.getElementById('invFormTitle').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function cancelEditInv(){
+  editingInvestmentId=null;
+  selectedTitolo=null;
+  invSearchEl.value='';
   document.getElementById('invDetectedBadge').textContent='—';
   document.getElementById('invIsinManual').value='';
   document.getElementById('invQty').value='';
   document.getElementById('invPrice').value='';
   document.getElementById('invCurPrice').value='';
-  renderInvestimenti();
-});
+  document.getElementById('invFormTitle').textContent='Aggiungi posizione';
+  document.getElementById('addInvBtn').textContent='Aggiungi';
+  document.getElementById('cancelEditInvField').style.display='none';
+}
+document.getElementById('cancelEditInvBtn').addEventListener('click',cancelEditInv);
 
 // Aggiorna prezzo attuale inline
 async function updateInvPrice(id,val){
@@ -3143,6 +3205,7 @@ async function deleteInv(id){
   try {
     await deleteInvestmentAPI(id);
     DATA.investments=DATA.investments.filter(i=>i.id!==id);
+    if(editingInvestmentId===id) cancelEditInv();
     renderInvestimenti();
   } catch(e){ toast('Errore: '+e.message,true); }
 }
@@ -3292,11 +3355,17 @@ function renderInvestimenti(){
       <td class="amt">${fmtCur(val)}</td>
       <td class="amt ${pnlCls}">${pnl>=0?'+':''}${fmtCur(pnl)}</td>
       <td class="amt ${pnlCls}" style="white-space:nowrap;">${rendSign}${rend.toFixed(2)}%</td>
-      <td><button class="icon-btn" data-delinv="${i.id}">✕</button></td>`;
+      <td style="white-space:nowrap;">
+        <button class="icon-edit" data-editinv="${i.id}" title="Modifica">✏</button>
+        <button class="icon-btn" data-delinv="${i.id}">✕</button>
+      </td>`;
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('[data-inv-price]').forEach(inp=>{
     inp.addEventListener('change',()=>updateInvPrice(inp.dataset.invPrice,inp.value));
+  });
+  tbody.querySelectorAll('[data-editinv]').forEach(btn=>{
+    btn.addEventListener('click',()=>startEditInv(btn.dataset.editinv));
   });
   tbody.querySelectorAll('[data-delinv]').forEach(btn=>{
     btn.addEventListener('click',()=>deleteInv(btn.dataset.delinv));
@@ -3360,9 +3429,10 @@ function renderInvAnalysis(){
 
   const top3 = sorted.slice(0, Math.min(3, Math.ceil(sorted.length / 2)));
   const topIds = new Set(top3.map(i => i.id));
-  const bot3 = sorted.filter(i => !topIds.has(i.id)).slice(-3).reverse();
+  // La peggiore deve contenere solo posizioni effettivamente in perdita (rend < 0)
+  const bot3 = sorted.filter(i => !topIds.has(i.id) && i.rend < 0).slice(-3).reverse();
   document.getElementById('invTopPerf').innerHTML = top3.length ? top3.map(i=>perfRow(i,'inc')).join('') : '<span style="font-size:12px;color:var(--ink-faint);">—</span>';
-  document.getElementById('invBotPerf').innerHTML = bot3.length ? bot3.map(i=>perfRow(i,'exp')).join('') : '<span style="font-size:12px;color:var(--ink-faint);">Aggiungi altre posizioni per confrontare.</span>';
+  document.getElementById('invBotPerf').innerHTML = bot3.length ? bot3.map(i=>perfRow(i,'exp')).join('') : '<span style="font-size:12px;color:var(--good);">✓ Nessuna posizione in perdita.</span>';
 
   // --- alert concentrazione (posizioni > 20%) ---
   const concentrated = invs.filter(i => (i.qty*i.curPrice/totalVal) > 0.20);
@@ -3385,12 +3455,14 @@ function renderInvAnalysis(){
 ==================================================== */
 const RISK_PROFILE_KEY = 'inv_risk_profile';
 
-const INV_RISK_TYPE = { obbligazione:1.0, etf:1.8, azione:2.5, crypto:3.0, altro:2.0 };
+// Il punteggio di rischio misura l'esposizione di asset allocation (azionario vs
+// obbligazionario vs crypto), non la volatilità del singolo titolo: un ETF azionario
+// pesa come l'azionario che replica, non viene "scontato" solo perché è un ETF
+// (altrimenti un portafoglio 90% ETF azionario risulterebbe erroneamente prudente).
 const INV_RISK_SECTOR = {
-  'Bond':-0.4, 'Real Estate':-0.1, 'ETF':-0.3,
-  'Tech':0.2, 'Crypto':0.5, 'Energy':0.1, 'Finance':0.1,
-  'Healthcare':0, 'Consumer':-0.1, 'Industrial':0.1,
-  'Materials':0.1, 'Materie Prime':0.2, 'Altro':0
+  'Bond':1.0, 'Materie Prime':2.0, 'Real Estate':2.2,
+  'Healthcare':2.3, 'Consumer':2.4, 'Industrial':2.4, 'Materials':2.4, 'Finance':2.4,
+  'Energy':2.5, 'ETF':2.5, 'Tech':2.6, 'Crypto':3.0, 'Altro':2.0
 };
 const RISK_META = {
   conservativo: { icon:'🛡', label:'Conservativo', color:'var(--good)',
@@ -3405,9 +3477,9 @@ const RISK_META = {
 };
 
 function _invPositionRisk(inv){
-  return Math.max(1, Math.min(3,
-    (INV_RISK_TYPE[inv.type] || 2.0) + (INV_RISK_SECTOR[inv.sector] || 0)
-  ));
+  if(inv.type==='obbligazione') return 1.0;
+  if(inv.type==='crypto') return 3.0;
+  return Math.max(1, Math.min(3, INV_RISK_SECTOR[inv.sector] ?? 2.0));
 }
 function _portfolioRiskScore(invs){
   const tot = invs.reduce((s,i) => s + i.qty*i.curPrice, 0);
