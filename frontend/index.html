@@ -3189,18 +3189,6 @@ function cancelEditInv(){
 document.getElementById('cancelEditInvBtn').addEventListener('click',cancelEditInv);
 
 // Aggiorna prezzo attuale inline
-async function updateInvPrice(id,val){
-  const newPrice=parseFloat(val);
-  if(!newPrice)return;
-  try {
-    const updated=await updateInvestmentAPI(id,{cur_price:newPrice});
-    const idx=DATA.investments.findIndex(i=>i.id===id);
-    if(idx>=0) DATA.investments[idx]=updated;
-    renderInvestimenti();
-  } catch(e){ toast('Errore aggiornamento prezzo: '+e.message,true); }
-}
-window.__updateInvPrice=updateInvPrice;
-
 async function deleteInv(id){
   try {
     await deleteInvestmentAPI(id);
@@ -3347,9 +3335,9 @@ function renderInvestimenti(){
       <td class="amt">${fmtNum(i.qty,4)}</td>
       <td class="amt">${fmtCur(i.avgPrice)}</td>
       <td class="amt" style="padding:4px 10px;">
-        <input type="number" value="${i.curPrice}" data-inv-price="${i.id}"
-          style="width:100px;text-align:right;padding:4px 6px;font-size:12px;background:var(--bg);"
-          step="0.01" min="0" title="Aggiorna prezzo attuale">
+        <input type="number" value="${i.curPrice}" data-inv-price="${i.id}" disabled
+          style="width:100px;text-align:right;padding:4px 6px;font-size:12px;background:var(--bg);opacity:.55;cursor:not-allowed;"
+          step="0.01" min="0" title="Clicca ✏ Modifica per aggiornare il prezzo">
       </td>
       <td class="amt">${fmtCur(cost)}</td>
       <td class="amt">${fmtCur(val)}</td>
@@ -3360,9 +3348,6 @@ function renderInvestimenti(){
         <button class="icon-btn" data-delinv="${i.id}">✕</button>
       </td>`;
     tbody.appendChild(tr);
-  });
-  tbody.querySelectorAll('[data-inv-price]').forEach(inp=>{
-    inp.addEventListener('change',()=>updateInvPrice(inp.dataset.invPrice,inp.value));
   });
   tbody.querySelectorAll('[data-editinv]').forEach(btn=>{
     btn.addEventListener('click',()=>startEditInv(btn.dataset.editinv));
@@ -3531,7 +3516,11 @@ function renderInvRiskResult(){
   const aligned = portProfile === userProfile;
   const portMore = profiles.indexOf(portProfile) > profiles.indexOf(userProfile);
 
-  const scoreBar = `<span style="display:inline-block;background:${portMeta.color};color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;opacity:.85;">
+  // Quando il portafoglio è in linea col profilo, il badge usa il colore "good"
+  // invece del colore assoluto del livello di rischio (es. rosso per aggressivo),
+  // altrimenti un profilo aggressivo correttamente in linea sembrerebbe un allarme.
+  const badgeColor = aligned ? 'var(--good)' : portMeta.color;
+  const scoreBar = `<span style="display:inline-block;background:${badgeColor};color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;opacity:.85;">
     ${portMeta.icon} ${portMeta.label} — score ${score.toFixed(1)}/3.0
   </span>`;
 
