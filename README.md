@@ -2,7 +2,11 @@
 
 App di gestione finanze personali con backend API, bot Telegram e analisi del portafoglio investimenti.
 
+[![Deploy on Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Jackills93/Personal-Finance)
+&nbsp;&nbsp;
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/Jackills93/Personal-Finance)
+
+> **Render** è gratuito (cold start ~30s dopo 15 min di inattività). **Railway** offre 30 giorni di prova poi è a pagamento (~$5/mese).
 
 ---
 
@@ -24,55 +28,52 @@ App di gestione finanze personali con backend API, bot Telegram e analisi del po
 | Layer | Tecnologia |
 |---|---|
 | Backend | FastAPI + SQLAlchemy (Python) |
-| Database | PostgreSQL (Railway o Supabase) |
+| Database | PostgreSQL (Supabase free) |
 | Frontend | HTML/CSS/JS puro (nessun framework) |
-| Backend hosting | Railway |
-| Frontend hosting | Vercel |
+| Backend hosting | Render (free) o Railway |
+| Frontend hosting | Vercel (free) |
 | Notifiche | Telegram Bot API |
 
 ---
 
 ## Deploy in produzione
 
-### 1. Database PostgreSQL
+### 1. Database — Supabase (gratuito)
 
-**Opzione A — Railway PostgreSQL** (consigliato con il deploy button)
-1. Nel progetto Railway, clicca **+ New** → **Database** → **PostgreSQL**
-2. Railway inietta `DATABASE_URL` automaticamente — non serve copiare nulla
-
-**Opzione B — Supabase**
 1. Crea un progetto su [supabase.com](https://supabase.com)
 2. Vai su **SQL Editor** → incolla il contenuto di [`supabase/schema.sql`](supabase/schema.sql) → esegui
-3. Copia la stringa da **Settings → Database → Connection string → Connection pooling** (Transaction, porta 6543)
-4. Cambia il prefisso da `postgresql://` a `postgresql+psycopg://`
+3. Vai su **Settings → Database → Connection string → Connection pooling**
+   - Modalità **Transaction**, porta **6543**
+   - Copia la stringa e cambia il prefisso da `postgresql://` a `postgresql+psycopg://`
 
-### 2. Backend su Railway
+### 2. Backend su Render (gratuito)
 
-1. Clicca il pulsante **Deploy on Railway** in cima a questo file
-2. In Railway, imposta **Root Directory = `backend`** nelle impostazioni del servizio
-3. Aggiungi le variabili d'ambiente (vedi [`backend/.env.example`](backend/.env.example)):
+1. Clicca il pulsante **Deploy on Render** in cima a questo file
+2. Render rileva automaticamente il file `backend/render.yaml`
+3. Aggiungi le variabili d'ambiente nella dashboard Render:
 
 | Variabile | Obbligatoria | Descrizione |
 |---|---|---|
-| `DATABASE_URL` | ✓ | Stringa connessione PostgreSQL |
+| `DATABASE_URL` | ✓ | Stringa connessione Supabase (pooler Transaction, porta 6543) |
 | `CORS_ORIGINS` | ✓ | URL del frontend Vercel (es. `https://tuo-progetto.vercel.app`) |
-| `APP_PASSWORD` | ✓ | Password per proteggere l'app |
+| `APP_PASSWORD` | ✓ | Password a piacere per proteggere l'app |
 | `TELEGRAM_BOT_TOKEN` | — | Token del bot da @BotFather |
 | `TELEGRAM_CHAT_ID` | — | Chat ID numerico dell'utente principale |
 | `TELEGRAM_CHAT_ID_NAME` | — | Nome dell'utente (usa il first_name Telegram se vuoto) |
 | `TELEGRAM_CHAT_ID_GRETA` | — | Chat ID secondo utente (opzionale) |
 | `TELEGRAM_CHAT_ID_GRETA_NAME` | — | Nome secondo utente (opzionale) |
 
-### 3. Frontend su Vercel
+> **Cold start**: il piano free di Render mette il backend in sleep dopo 15 minuti di inattività. La prima apertura dell'app mostrerà uno schermo di caricamento per ~30 secondi. Dopo, tutto funziona normalmente.
 
-1. Su [vercel.com](https://vercel.com) → **New Project** → importa il repo
-2. Imposta **Root Directory = `frontend`**
+### 3. Frontend su Vercel (gratuito)
+
+1. Su [vercel.com](https://vercel.com) → **New Project** → importa questo repo
+2. Lascia **Root Directory vuoto** (il `vercel.json` alla root gestisce tutto)
 3. Aggiungi le variabili d'ambiente:
-   - `API_BASE_URL` = URL del backend Railway (es. `https://tuo-backend.up.railway.app`)
-   - `APP_PASSWORD` = stessa password impostata su Railway
-4. Deploy
-
-5. Torna su Railway e aggiorna `CORS_ORIGINS` con l'URL Vercel ottenuto
+   - `API_BASE_URL` = URL del backend Render (es. `https://bilancio-api.onrender.com`)
+   - `APP_PASSWORD` = stessa password impostata su Render
+4. Clicca **Deploy**
+5. Copia l'URL Vercel ottenuto → torna su Render e aggiorna `CORS_ORIGINS`
 
 ### 4. Bot Telegram (opzionale)
 
@@ -80,10 +81,10 @@ Il bot permette di registrare spese via messaggio e ricevere notifiche quando si
 
 1. Crea il bot con **@BotFather** → `/newbot` → ottieni il token
 2. Trova il tuo chat ID: scrivi al bot, poi apri `https://api.telegram.org/bot<TOKEN>/getUpdates`
-3. Imposta `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` su Railway
+3. Imposta `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` su Render
 4. Registra il webhook (una tantum, dopo il deploy):
    ```bash
-   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<tuo-backend>.up.railway.app/telegram/webhook"
+   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<tuo-backend>.onrender.com/telegram/webhook"
    ```
 
 **Sintassi messaggi:**

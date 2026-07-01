@@ -11,3 +11,15 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: TELEGRAM_CHAT_ID_NAME
+        sync: false
+      - key: TELEGRAM_CHAT_ID_GRETA
+        sync: false
+      - key: TELEGRAM_CHAT_ID_GRETA_NAME
+        sync: false
