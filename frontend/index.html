@@ -915,6 +915,29 @@ hr.divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <div id="bilBestMonth" class="empty">—</div>
     </div>
   </div>
+
+  <!-- CONFRONTO ANNO PRECEDENTE -->
+  <div class="panel" id="bilYoyPanel" style="margin-top:16px;display:none;">
+    <h2>Confronto anno precedente <small id="bilYoyLabel"></small></h2>
+    <div class="grid-kpi" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+      <div class="kpi"><div class="label">Entrate</div><div class="value mono" id="bilYoyIn">—</div><div class="sub" id="bilYoyInSub"></div></div>
+      <div class="kpi"><div class="label">Uscite</div><div class="value mono" id="bilYoyOut">—</div><div class="sub" id="bilYoyOutSub"></div></div>
+      <div class="kpi"><div class="label">Tasso risparmio</div><div class="value mono" id="bilYoySav">—</div><div class="sub" id="bilYoySavSub"></div></div>
+    </div>
+    <div style="height:220px;margin-bottom:20px;"><canvas id="bilYoyChart"></canvas></div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim);margin-bottom:8px;">Risparmio per persona</div>
+    <table class="bil-table" id="bilYoyPersonTable">
+      <thead><tr><th>Persona</th><th style="text-align:right;">% risparmio (periodo)</th><th style="text-align:right;">Anno precedente</th><th style="text-align:right;">Δ</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- INFLAZIONE SPESE CHIAVE -->
+  <div class="panel" id="bilInflPanel" style="margin-top:16px;display:none;">
+    <h2>Inflazione spese chiave <small>Media mensile: periodo corrente vs anno precedente</small></h2>
+    <div id="bilInflKpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;"></div>
+    <div style="height:200px;"><canvas id="bilInflChart"></canvas></div>
+  </div>
 </section>
 
 <!-- ==================== ARCHIVIO ==================== -->
@@ -3600,6 +3623,18 @@ function getBilancioMovs(){
 
 function bilMonthKey(dateStr){ return dateStr.slice(0,7); }
 
+// Carica Chart.js una sola volta anche se chiamato in parallelo più volte
+let _bilChartCbs = null;
+function _bilancioEnsureChart(cb){
+  if(typeof Chart !== 'undefined'){ cb(); return; }
+  if(_bilChartCbs){ _bilChartCbs.push(cb); return; }
+  _bilChartCbs = [cb];
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+  s.onload = () => { const q=_bilChartCbs; _bilChartCbs=null; q.forEach(f=>f()); };
+  document.head.appendChild(s);
+}
+
 function renderBilancio(){
   const movs = getBilancioMovs();
   const income = movs.filter(m=>m.type==='income');
@@ -3691,6 +3726,187 @@ function renderBilancio(){
   document.getElementById('bilBestMonth').innerHTML = best
     ? `<div style="font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--good);">${fmtCur(best.mOut)}</div><div style="color:var(--ink-dim);font-size:13px;margin-top:4px;">${fmtMonth(best.mk)}</div>`
     : '—';
+
+  // ── CONFRONTO ANNO PRECEDENTE + INFLAZIONE ─────────────────────────────────
+  const bilFrom = document.getElementById('bilFrom').value;
+  const bilTo   = document.getElementById('bilTo').value;
+  if(!bilFrom || !bilTo){
+    document.getElementById('bilYoyPanel').style.display='none';
+    document.getElementById('bilInflPanel').style.display='none';
+    return;
+  }
+
+  const bilPersona = document.getElementById('bilPersona').value;
+  const prevFrom = (parseInt(bilFrom.slice(0,4))-1) + bilFrom.slice(4);
+  const prevTo   = (parseInt(bilTo.slice(0,4))-1)   + bilTo.slice(4);
+  const prevMovs = DATA.movements.filter(m=>
+    m.type!=='transfer' &&
+    m.date.slice(0,7)>=prevFrom &&
+    m.date.slice(0,7)<=prevTo &&
+    (!bilPersona||m.persona===bilPersona)
+  );
+  const hasPrev = prevMovs.length>0;
+  document.getElementById('bilYoyPanel').style.display = hasPrev ? '' : 'none';
+
+  if(hasPrev){
+    const curYear  = bilFrom.slice(0,4);
+    const prevYear = prevFrom.slice(0,4);
+    document.getElementById('bilYoyLabel').textContent = `${curYear} vs ${prevYear}`;
+
+    const prevInAll  = prevMovs.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+    const prevOutAll = prevMovs.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+    const prevSavRate = prevInAll>0 ? ((prevInAll-prevOutAll)/prevInAll*100) : 0;
+
+    const dFmt = (cur, prev, invert=false) => {
+      if(!prev) return '<span style="color:var(--ink-faint)">—</span>';
+      const d = (cur-prev)/prev*100;
+      const good = invert ? d<0 : d>0;
+      return `<span class="${good?'good':'bad'}">${d>0?'+':''}${d.toFixed(1)}%</span>`;
+    };
+
+    document.getElementById('bilYoyIn').textContent   = fmtCur(totIn);
+    document.getElementById('bilYoyInSub').innerHTML  = `${fmtCur(prevInAll)} anno prec. · ${dFmt(totIn,prevInAll)}`;
+    document.getElementById('bilYoyOut').textContent  = fmtCur(totOut);
+    document.getElementById('bilYoyOutSub').innerHTML = `${fmtCur(prevOutAll)} anno prec. · ${dFmt(totOut,prevOutAll,true)}`;
+    const yoySavEl = document.getElementById('bilYoySav');
+    yoySavEl.textContent = (savingsRate>=0?'+':'')+savingsRate.toFixed(1)+'%';
+    yoySavEl.className = 'value mono '+(savingsRate>=0?'good':'bad');
+    const dSav = savingsRate-prevSavRate;
+    document.getElementById('bilYoySavSub').innerHTML =
+      `${prevSavRate.toFixed(1)}% anno prec. · <span class="${dSav>=0?'good':'bad'}">${dSav>0?'+':''}${dSav.toFixed(1)} pp</span>`;
+
+    // tabella risparmio per persona
+    const allPpl = [...new Set([...movs.map(m=>m.persona),...prevMovs.map(m=>m.persona)].filter(Boolean))].sort();
+    const yoyPtb = document.querySelector('#bilYoyPersonTable tbody');
+    yoyPtb.innerHTML = allPpl.map(p=>{
+      const cm=movs.filter(m=>m.persona===p);
+      const ci=cm.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+      const co=cm.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+      const cs=ci>0?((ci-co)/ci*100):null;
+      const pm=prevMovs.filter(m=>m.persona===p);
+      const pi=pm.filter(m=>m.type==='income').reduce((s,m)=>s+m.amount,0);
+      const po=pm.filter(m=>m.type==='expense').reduce((s,m)=>s+m.amount,0);
+      const ps=pi>0?((pi-po)/pi*100):null;
+      const dd=cs!==null&&ps!==null?cs-ps:null;
+      return `<tr>
+        <td><strong>${escH(p)}</strong></td>
+        <td class="num ${cs!==null&&cs>=0?'good':'bad'}">${cs!==null?(cs>0?'+':'')+cs.toFixed(1)+'%':'—'}</td>
+        <td class="num" style="color:var(--ink-dim);">${ps!==null?(ps>0?'+':'')+ps.toFixed(1)+'%':'—'}</td>
+        <td class="num">${dd!==null?`<span class="${dd>=0?'good':'bad'}">${dd>0?'+':''}${dd.toFixed(1)} pp</span>`:'—'}</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="4" style="color:var(--ink-faint);padding:12px 10px;">Nessuna persona associata ai movimenti.</td></tr>`;
+
+    // dati per il grafico YoY
+    const yoyLabels  = months.map(mk=>new Date(mk+'-01').toLocaleDateString('it-IT',{month:'short'}));
+    const curOutM    = months.map(mk=>movs.filter(m=>bilMonthKey(m.date)===mk&&m.type==='expense').reduce((s,m)=>s+m.amount,0));
+    const prevOutM   = months.map(mk=>{const pmk=(parseInt(mk.slice(0,4))-1)+mk.slice(4);return prevMovs.filter(m=>bilMonthKey(m.date)===pmk&&m.type==='expense').reduce((s,m)=>s+m.amount,0);});
+    const curInM     = months.map(mk=>movs.filter(m=>bilMonthKey(m.date)===mk&&m.type==='income').reduce((s,m)=>s+m.amount,0));
+    const prevInM    = months.map(mk=>{const pmk=(parseInt(mk.slice(0,4))-1)+mk.slice(4);return prevMovs.filter(m=>bilMonthKey(m.date)===pmk&&m.type==='income').reduce((s,m)=>s+m.amount,0);});
+
+    _bilancioEnsureChart(()=>{
+      const c1=document.getElementById('bilYoyChart');
+      if(!c1) return;
+      if(window._bilYoyCI){window._bilYoyCI.destroy();window._bilYoyCI=null;}
+      window._bilYoyCI=new Chart(c1.getContext('2d'),{
+        type:'bar',
+        data:{
+          labels:yoyLabels,
+          datasets:[
+            {label:`Uscite ${curYear}`, data:curOutM,  backgroundColor:'rgba(242,97,78,.75)', borderRadius:4},
+            {label:`Uscite ${prevYear}`,data:prevOutM, backgroundColor:'rgba(242,97,78,.25)', borderRadius:4},
+            {label:`Entrate ${curYear}`,data:curInM,   backgroundColor:'rgba(111,227,160,.7)',borderRadius:4},
+            {label:`Entrate ${prevYear}`,data:prevInM, backgroundColor:'rgba(111,227,160,.22)',borderRadius:4},
+          ]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{labels:{color:'#8FA898',font:{size:11}}},tooltip:{callbacks:{label:c=>' '+fmtCur(c.parsed.y)}}},
+          scales:{
+            x:{ticks:{color:'#6B7C71',font:{size:10}},grid:{color:'#28342B'}},
+            y:{ticks:{color:'#6B7C71',font:{size:10},callback:v=>fmtCur(v)},grid:{color:'#28342B'}}
+          }
+        }
+      });
+    });
+  }
+
+  // ── INFLAZIONE SPESE CHIAVE ─────────────────────────────────────────────────
+  const INFL_GROUPS = [
+    {key:'alim', label:'Alimentari',        kwds:['alimentar','spesa','cibo','food','generi'],                          color:'#6FE3A0'},
+    {key:'benz', label:'Benzina/Carburante', kwds:['benzin','carburant','gasolio','fuel'],                              color:'#F2C14E'},
+    {key:'boll', label:'Bollette',           kwds:['bollett','luce','energia','elettric','gas','acqua','utenz','utility'], color:'#7CA8E3'},
+  ];
+  const inflCatIds = {};
+  INFL_GROUPS.forEach(g=>{
+    inflCatIds[g.key]=DATA.categories.filter(c=>g.kwds.some(kw=>c.name.toLowerCase().includes(kw))).map(c=>c.id);
+  });
+
+  // movimenti di spesa su 2 anni (prevFrom → bilTo) per il grafico di trend
+  const all2yrExp = DATA.movements.filter(m=>
+    m.type==='expense' &&
+    m.date.slice(0,7)>=prevFrom &&
+    m.date.slice(0,7)<=bilTo &&
+    (!bilPersona||m.persona===bilPersona)
+  );
+  const allMonths2 = [...new Set(all2yrExp.map(m=>bilMonthKey(m.date)))].sort();
+  const inflHasData = INFL_GROUPS.some(g=>
+    inflCatIds[g.key].length>0 &&
+    (movs.some(m=>m.type==='expense'&&inflCatIds[g.key].includes(m.category)) ||
+     prevMovs.some(m=>m.type==='expense'&&inflCatIds[g.key].includes(m.category)))
+  );
+  document.getElementById('bilInflPanel').style.display = inflHasData ? '' : 'none';
+
+  if(inflHasData){
+    const nCur  = months.length||1;
+    const nPrev = hasPrev ? ([...new Set(prevMovs.map(m=>bilMonthKey(m.date)))].length||1) : 0;
+
+    document.getElementById('bilInflKpis').innerHTML = INFL_GROUPS.map(g=>{
+      if(!inflCatIds[g.key].length) return '';
+      const curTot  = movs.filter(m=>m.type==='expense'&&inflCatIds[g.key].includes(m.category)).reduce((s,m)=>s+m.amount,0);
+      const prevTot = nPrev>0 ? prevMovs.filter(m=>m.type==='expense'&&inflCatIds[g.key].includes(m.category)).reduce((s,m)=>s+m.amount,0) : 0;
+      const curAvg  = curTot/nCur;
+      const prevAvg = nPrev>0 ? prevTot/nPrev : 0;
+      const hasPrevData = prevTot>0;
+      const delta   = hasPrevData ? (curAvg-prevAvg)/prevAvg*100 : null;
+      const isUp    = delta!==null&&delta>0;
+      const deltaHtml = delta!==null
+        ? `<span style="font-size:11px;color:${isUp?'var(--bad)':'var(--good)'};">${isUp?'▲':'▼'} ${Math.abs(delta).toFixed(1)}% vs anno prec.</span>`
+        : `<span style="font-size:11px;color:var(--ink-faint);">Nessun dato anno prec.</span>`;
+      return `<div class="kpi" style="border-left:3px solid ${g.color};">
+        <div class="label">${escH(g.label)}</div>
+        <div class="value mono">${fmtCur(curAvg)}<span style="font-size:11px;font-weight:400;color:var(--ink-dim);">/mese</span></div>
+        <div class="sub">${deltaHtml}</div>
+      </div>`;
+    }).join('');
+
+    const inflDatasets = INFL_GROUPS.filter(g=>inflCatIds[g.key].length).map(g=>({
+      label:g.label,
+      data:allMonths2.map(mk=>all2yrExp.filter(m=>bilMonthKey(m.date)===mk&&inflCatIds[g.key].includes(m.category)).reduce((s,m)=>s+m.amount,0)),
+      borderColor:g.color, backgroundColor:g.color+'22',
+      tension:0.3, fill:false, pointRadius:3, borderWidth:2
+    }));
+
+    _bilancioEnsureChart(()=>{
+      const c2=document.getElementById('bilInflChart');
+      if(!c2) return;
+      if(window._bilInflCI){window._bilInflCI.destroy();window._bilInflCI=null;}
+      window._bilInflCI=new Chart(c2.getContext('2d'),{
+        type:'line',
+        data:{
+          labels:allMonths2.map(mk=>{const d=new Date(mk+'-01');return d.toLocaleDateString('it-IT',{month:'short',year:'2-digit'});}),
+          datasets:inflDatasets
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{labels:{color:'#8FA898',font:{size:11}}},tooltip:{callbacks:{label:c=>' '+fmtCur(c.parsed.y)}}},
+          scales:{
+            x:{ticks:{color:'#6B7C71',font:{size:10}},grid:{color:'#28342B'}},
+            y:{ticks:{color:'#6B7C71',font:{size:10},callback:v=>fmtCur(v)},grid:{color:'#28342B'}}
+          }
+        }
+      });
+    });
+  }
 }
 
 function exportBilancio(){
