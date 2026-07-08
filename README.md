@@ -81,11 +81,13 @@ Il bot permette di registrare spese via messaggio e ricevere notifiche quando si
 
 1. Crea il bot con **@BotFather** → `/newbot` → ottieni il token
 2. Trova il tuo chat ID: scrivi al bot, poi apri `https://api.telegram.org/bot<TOKEN>/getUpdates`
-3. Imposta `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` su Render
-4. Registra il webhook (una tantum, dopo il deploy):
+3. Genera un secret per il webhook (es. `openssl rand -hex 16`)
+4. Imposta su Render: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` e `TELEGRAM_WEBHOOK_SECRET`
+5. Registra il webhook (una tantum, dopo il deploy) passando **lo stesso** secret:
    ```bash
-   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<tuo-backend>.onrender.com/telegram/webhook"
+   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<tuo-backend>.onrender.com/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>"
    ```
+   Così l'endpoint accetta solo le chiamate autentiche di Telegram (che inviano il secret nell'header `X-Telegram-Bot-Api-Secret-Token`) e ignora eventuali richieste di sconosciuti che conoscono l'URL.
 
 **Sintassi messaggi:**
 ```

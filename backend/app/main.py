@@ -29,7 +29,9 @@ app = FastAPI(title="Bilancio API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
+    # L'autenticazione avviene via header X-App-Password, non via cookie:
+    # allow_credentials può restare False (più restrittivo, nessun invio di cookie cross-origin).
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

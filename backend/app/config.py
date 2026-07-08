@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     CORS_ORIGINS: str = "http://localhost:5500,http://127.0.0.1:5500"
     TELEGRAM_BOT_TOKEN: str | None = None
+    TELEGRAM_WEBHOOK_SECRET: str | None = None
     TELEGRAM_CHAT_ID: str | None = None
     TELEGRAM_CHAT_ID_NAME: str = ""
     TELEGRAM_CHAT_ID_GRETA: str | None = None

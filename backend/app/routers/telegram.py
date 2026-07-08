@@ -1,8 +1,9 @@
 import logging
 import re
+import secrets
 from datetime import date
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Header
 from sqlalchemy.orm import Session
 
 from app.category_guess import guess_category_id
@@ -67,7 +68,21 @@ def _authorized_chat_map() -> dict[str, str]:
 
 
 @router.post("/webhook")
-def telegram_webhook(payload: dict = Body(...), db: Session = Depends(get_db)):
+def telegram_webhook(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    x_telegram_bot_api_secret_token: str | None = Header(default=None),
+):
+    # Se è configurato un secret token, Telegram lo invia in questo header a ogni
+    # chiamata: rifiutiamo le richieste che non lo presentano (o errato), così un
+    # attaccante che conosce l'URL del webhook non può iniettare movimenti falsi.
+    if settings.TELEGRAM_WEBHOOK_SECRET:
+        if not x_telegram_bot_api_secret_token or not secrets.compare_digest(
+            x_telegram_bot_api_secret_token, settings.TELEGRAM_WEBHOOK_SECRET
+        ):
+            logger.warning("Webhook Telegram: secret token mancante o errato")
+            return {"ok": True}
+
     message = payload.get("message")
     if not message or "text" not in message:
         return {"ok": True}
